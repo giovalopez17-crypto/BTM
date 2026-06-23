@@ -35,6 +35,7 @@
                 <h1 class="text-3xl font-bold tracking-tight text-slate-900 uppercase">WEEKLY MASTER</h1>
                 <p class="text-xs text-slate-500 font-medium tracking-wider uppercase mt-1">Panel Estratégico de Control Semanal</p>
             </div>
+            
             <div class="flex bg-slate-200 p-1 rounded gap-1 border border-slate-300">
                 <button onclick="cambiarSemana('actual')" id="btn-sem-actual" class="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded shadow-sm transition uppercase">Semana Actual</button>
                 <button onclick="cambiarSemana('proxima')" id="btn-sem-proxima" class="text-slate-600 text-xs font-bold px-4 py-2 rounded hover:text-slate-900 transition uppercase">Próxima Semana</button>
@@ -56,6 +57,7 @@
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Coordinadores Activos</label>
                     <input type="number" id="input-coordinadores" value="4" min="1" onchange="calcularBarras()" class="w-24 border border-slate-300 px-3 py-1.5 font-bold rounded-sm text-center bg-white outline-none">
                 </div>
+                
                 <div class="md:col-span-2 space-y-3">
                     <div>
                         <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -364,19 +366,19 @@
             saveBtn.innerText = "Sincronizando Todo...";
             saveBtn.disabled = true;
 
-            let registrosFinales = [];
+            let horariosFinales = [];
+            let prioridadesFinales = [];
 
+            // 1. Recopilar Horarios de Rutas
             DIAS.forEach(dia => {
                 const filas = document.getElementById(`blocks-${dia}`).querySelectorAll('.row-bloque');
                 filas.forEach(fila => {
-                    let { valorInicio, valorFin } = "";
                     const inInicio = fila.querySelector('.input-inicio');
                     const inFin = fila.querySelector('.input-fin');
                     
                     let suc = "WFH";
                     fila.querySelectorAll('.branch-btn').forEach(b => { if(b.className.includes('active-')) suc = b.innerText.trim(); });
-                    registrosFinales.push({
-                        tipo: "HORARIO",
+                    horariosFinales.push({
                         dia: dia,
                         inicio: inInicio ? inInicio.value : "08:00",
                         fin: inFin ? inFin.value : "17:00",
@@ -385,6 +387,7 @@
                 });
             });
 
+            // 2. Recopilar Prioridades/Auditorías arrastradas
             DIAS.forEach(dia => {
                 const zone = document.getElementById(`drop-${dia}`);
                 if(zone) {
@@ -393,11 +396,8 @@
                         const id = card.id.replace('card-', '');
                         const info = bibliotecaBloques[id];
                         if (info) {
-                            registrosFinales.push({
-                                tipo: "PRIORIDAD",
+                            prioridadesFinales.push({
                                 dia: dia,
-                                inicio: "-",
-                                fin: "-",
                                 detalle: `${info.nombre} (${info.duracion}h)`
                             });
                         }
@@ -406,17 +406,22 @@
             });
 
             try {
+                // Enviamos un JSON unificado. El Apps Script se encargará de repartirlo en HORARIOS y PRIORIDADES automáticamente.
                 await fetch(URL_APPLICATIONS_SCRIPT, {
                     method: 'POST',
                     mode: 'no-cors',
                     cache: 'no-cache',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fechaLunes: fechaLunesSeleccionada, registros: registrosFinales })
+                    body: JSON.stringify({ 
+                        fechaLunes: fechaLunesSeleccionada, 
+                        horarios: horariosFinales,
+                        prioridades: prioridadesFinales
+                    })
                 });
-                alert("¡Ecosistema Completo unificado y guardado con éxito en tu Sheets!");
+                alert("¡Ecosistema unificado guardado perfectamente en sus pestañas correspondientes!");
             } catch(e) {
                 console.error(e);
-                alert("Error crítico al procesar la comunicación.");
+                alert("Error al comunicarse con la base de datos.");
             } finally {
                 saveBtn.innerText = "Guardar Ecosistema Completo";
                 saveBtn.disabled = false;
