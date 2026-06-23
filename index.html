@@ -201,6 +201,7 @@
                 let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
                 const sucursalActiva = ruta.detalle;
 
+                // Control especial para cortes de jornada de sábado si aplica
                 if (obtenerDiaSemanaEspanol() === "sabado") {
                     const limiteSabado = parseTimeToMinutes("12:00");
                     if (tiempoFinJornada > limiteSabado) tiempoFinJornada = limiteSabado;
@@ -246,7 +247,7 @@
             container.innerHTML = '';
             bloquesActuales = [];
 
-            const eventosFiltrados = eventosCalendar
+            const eventosFiltrados = eventosCalendario
                 .filter(e => e.start && (e.start.dateTime || e.start.date))
                 .map(e => ({
                     titulo: e.summary || "Actividad",
@@ -325,12 +326,21 @@
                 const response = await fetch(`${URL_APPLICATIONS_SCRIPT}?action=getWeeklyData`);
                 const resultado = await response.json();
                 
-                const lunesActualStr = obtenerLunesFechaString(); 
-                const diaHoyStr = obtenerDiaSemanaEspanol();
+                const lunesActualStr = obtenerLunesFechaString(); // Formato: YYYY-MM-DD
+                const diaHoyStr = obtenerDiaSemanaEspanol();      // Formato: martes, miercoles, etc.
 
-                // Filtrar registros emparejando Lunes de esta semana y el día de hoy sin acentos
+                // Quitamos cualquier guion o diagonal para comparación ultra segura
+                const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, "");
+
+                // Filtrado inteligente sobre el nuevo JSON unificado
                 const registrosHoy = resultado.data.filter(r => {
-                    return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
+                    if (!r.fechaLunes) return false;
+                    
+                    const fechaSheetLimpia = r.fechaLunes.toString().replace(/[^0-9]/g, "");
+                    const matchFecha = (fechaSheetLimpia === lunesLimpioLocal) || 
+                                       (fechaSheetLimpia === (lunesLimpioLocal.substring(6,8) + lunesLimpioLocal.substring(4,6) + lunesLimpioLocal.substring(0,4)));
+
+                    return matchFecha && cleanString(r.dia) === diaHoyStr;
                 });
 
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
