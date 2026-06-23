@@ -42,7 +42,7 @@
                     <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
                     <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
                     <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="—">
+                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
                 </div>
             </div>
         </div>
@@ -129,9 +129,9 @@
 
         function parseTimeToMinutes(timeStr) {
             if(!timeStr || !timeStr.includes(':')) return 0;
-            const parts = timeStr.split(':');
+            const parts = timeStr.trim().split(':');
             const h = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) || 0; // CORREGIDO AQUÍ
+            const m = parseInt(parts[1], 10) || 0;
             return h * 60 + m;
         }
 
@@ -200,11 +200,6 @@
                 let tiempoActual = parseTimeToMinutes(ruta.inicio);
                 let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
                 const sucursalActiva = ruta.detalle;
-
-                if (obtenerDiaSemanaEspanol() === "sabado") {
-                    const limiteSabado = parseTimeToMinutes("12:00");
-                    if (tiempoFinJornada > limiteSabado) tiempoFinJornada = limiteSabado;
-                }
 
                 while (tiempoActual < tiempoFinJornada) {
                     let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
@@ -328,10 +323,15 @@
                 const lunesActualStr = obtenerLunesFechaString();
                 const diaHoyStr = obtenerDiaSemanaEspanol();
 
+                // VENTANAS DE ALERTA DE CONTROL PARA DIAGNÓSTICO DE FECHAS
+                alert("Buscando en Sheet -> Lunes: " + lunesActualStr + " | Hoy: " + diaHoyStr);
+
                 // Filtrar registros emparejando Lunes de esta semana y el día de hoy sin acentos
                 const registrosHoy = resultado.data.filter(r => {
                     return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
                 });
+
+                alert("Bloques encontrados en Sheet para hoy: " + registrosHoy.length);
 
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
