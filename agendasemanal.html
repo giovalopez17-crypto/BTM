@@ -18,7 +18,6 @@
         .branch-btn.active-centro { background-color: #fef08a; border-color: #ca8a04; color: #a16207; }
         .branch-btn.active-wfh { background-color: #f1f5f9; border-color: #64748b; color: #475569; }
         
-        /* Colores pastel drag blocks */
         .block-qa { background-color: #fee2e2; border-left: 5px solid #ef4444; color: #991b1b; }
         .block-hw { background-color: #ffedd5; border-left: 5px solid #f97316; color: #9a3412; }
         .block-english { background-color: #e0f2fe; border-left: 5px solid #3b82f6; color: #075985; }
@@ -36,7 +35,6 @@
                 <h1 class="text-3xl font-bold tracking-tight text-slate-900 uppercase">WEEKLY MASTER</h1>
                 <p class="text-xs text-slate-500 font-medium tracking-wider uppercase mt-1">Panel Estratégico de Control Semanal</p>
             </div>
-            
             <div class="flex bg-slate-200 p-1 rounded gap-1 border border-slate-300">
                 <button onclick="cambiarSemana('actual')" id="btn-sem-actual" class="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded shadow-sm transition uppercase">Semana Actual</button>
                 <button onclick="cambiarSemana('proxima')" id="btn-sem-proxima" class="text-slate-600 text-xs font-bold px-4 py-2 rounded hover:text-slate-900 transition uppercase">Próxima Semana</button>
@@ -44,8 +42,8 @@
         </div>
 
         <div class="flex border-b border-slate-200 bg-slate-100 font-bold text-sm">
-            <button onclick="switchTab('horarios')" id="tab-horarios" class="px-6 py-3 border-b-2 border-slate-900 text-slate-900 bg-white">1. RUTAS Y HORARIOS</button>
-            <button onclick="switchTab('prioridades')" id="tab-prioridades" class="px-6 py-3 text-slate-500 hover:text-slate-900 transition">2. AUDITORÍAS Y PRIORIDADES</button>
+            <button onclick="switchTab('horarios')" id="tab-horarios" class="px-6 py-3 border-b-2 border-slate-900 text-slate-900 bg-white font-bold">1. RUTAS Y HORARIOS</button>
+            <button onclick="switchTab('prioridades')" id="tab-prioridades" class="px-6 py-3 text-slate-500 hover:text-slate-900 transition font-bold">2. AUDITORÍAS Y PRIORIDADES</button>
         </div>
 
         <div id="content-horarios" class="p-6 space-y-6">
@@ -53,13 +51,11 @@
         </div>
 
         <div id="content-prioridades" class="p-6 hidden space-y-6">
-            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-4 border border-slate-200 rounded-sm">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Coordinadores Activos</label>
                     <input type="number" id="input-coordinadores" value="4" min="1" onchange="calcularBarras()" class="w-24 border border-slate-300 px-3 py-1.5 font-bold rounded-sm text-center bg-white outline-none">
                 </div>
-                
                 <div class="md:col-span-2 space-y-3">
                     <div>
                         <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -300,8 +296,6 @@
             const card = document.createElement('div');
             card.id = `card-${idBloqueIncremental}`;
             card.draggable = true;
-            
-            // CORRECCIÓN CLAVE: Habilitar de forma explícita el evento ondragstart en las nuevas tarjetas individuales
             card.ondragstart = (e) => {
                 e.dataTransfer.setData("text/plain", e.target.id);
             };
@@ -375,31 +369,38 @@
             DIAS.forEach(dia => {
                 const filas = document.getElementById(`blocks-${dia}`).querySelectorAll('.row-bloque');
                 filas.forEach(fila => {
+                    let { valorInicio, valorFin } = "";
+                    const inInicio = fila.querySelector('.input-inicio');
+                    const inFin = fila.querySelector('.input-fin');
+                    
                     let suc = "WFH";
                     fila.querySelectorAll('.branch-btn').forEach(b => { if(b.className.includes('active-')) suc = b.innerText.trim(); });
                     registrosFinales.push({
                         tipo: "HORARIO",
                         dia: dia,
-                        inicio: fila.querySelector('.input-inicio').value,
-                        fin: fila.querySelector('.input-fin').value,
+                        inicio: inInicio ? inInicio.value : "08:00",
+                        fin: inFin ? inFin.value : "17:00",
                         detalle: suc
                     });
                 });
             });
 
             DIAS.forEach(dia => {
-                const cards = document.getElementById(`drop-${dia}`).children;
-                for (let card of cards) {
-                    const id = card.id.replace('card-', '');
-                    const info = bibliotecaBloques[id];
-                    if (info) {
-                        registrosFinales.push({
-                            tipo: "PRIORIDAD",
-                            dia: dia,
-                            inicio: "-",
-                            fin: "-",
-                            detalle: `${info.nombre} (${info.duracion}h)`
-                        });
+                const zone = document.getElementById(`drop-${dia}`);
+                if(zone) {
+                    const cards = zone.children;
+                    for (let card of cards) {
+                        const id = card.id.replace('card-', '');
+                        const info = bibliotecaBloques[id];
+                        if (info) {
+                            registrosFinales.push({
+                                tipo: "PRIORIDAD",
+                                dia: dia,
+                                inicio: "-",
+                                fin: "-",
+                                detalle: `${info.nombre} (${info.duracion}h)`
+                            });
+                        }
                     }
                 }
             });
@@ -412,10 +413,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fechaLunes: fechaLunesSeleccionada, registros: registrosFinales })
                 });
-                alert("¡Ecosistema Completo (Horarios y Prioridades) guardado con éxito!");
+                alert("¡Ecosistema Completo unificado y guardado con éxito en tu Sheets!");
             } catch(e) {
                 console.error(e);
-                alert("Error al guardar el ecosistema.");
+                alert("Error crítico al procesar la comunicación.");
             } finally {
                 saveBtn.innerText = "Guardar Ecosistema Completo";
                 saveBtn.disabled = false;
