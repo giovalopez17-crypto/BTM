@@ -11,7 +11,6 @@
 <body class="bg-gray-100 font-sans p-4 md:p-8 text-gray-800">
 
     <div class="max-w-4xl mx-auto bg-white border border-gray-300 shadow-sm rounded-sm overflow-hidden">
-        
         <div class="border-b-4 border-slate-900 p-4 flex justify-between items-center bg-slate-50">
             <h1 class="text-2xl md:text-3xl font-black tracking-wider text-slate-900 uppercase">
                 DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span>
@@ -98,10 +97,11 @@
         let gisInited = false;
         let tokenClient;
         let bloquesActuales = [];
+        let idBloqueIncremental = 0;
 
         document.addEventListener("DOMContentLoaded", () => {
-            renderizarTablaDinamica([]);
             establecerFechaEncabezado();
+            renderizarTablaPorDefecto();
         });
 
         function establecerFechaEncabezado() {
@@ -109,22 +109,44 @@
             const hoy = new Date();
             const mesText = meses[hoy.getMonth()];
             const diaNum = hoy.getDate();
-            
             let sufijo = "th";
             if (diaNum === 1 || diaNum === 21 || diaNum === 31) sufijo = "st";
             else if (diaNum === 2 || diaNum === 22) sufijo = "nd";
             else if (diaNum === 3 || diaNum === 23) sufijo = "rd";
-
             document.getElementById('dynamic-date').innerText = `- ${mesText} ${diaNum}${sufijo}`;
         }
 
-        function formatTime(date) {
+        function formatTimeFromDate(date) {
             return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+        }
+
+        function formatTimeFromMinutes(mins) {
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = (mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        function parseTimeToMinutes(timeStr) {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function obtenerDiaSemanaEspanol() {
+            const dias = ["Sábado", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            return dias[new Date().getDay()];
+        }
+
+        function obtenerLunesFechaString() {
+            let hoy = new Date();
+            let diaSemana = hoy.getDay(); 
+            let diferencia = diaSemana === 0 ? -6 : 1 - diaSemana; 
+            let lunes = new Date(hoy.setDate(hoy.getDate() + diferencia));
+            return lunes.toISOString().split('T')[0];
         }
 
         function agregarFila(labelTiempo, valorActividad) {
             const container = document.getElementById('agenda-rows');
-            const rowId = `input-${labelTiempo.replace(/[:\s-]/g, '')}`;
+            const rowId = `input-${labelTiempo.replace(/[:\s-]/g, '')}-${idBloqueIncremental++}`;
             bloquesActuales.push({ id: rowId, label: labelTiempo });
 
             const row = document.createElement('div');
@@ -140,16 +162,80 @@
             container.appendChild(row);
         }
 
-        function renderizarTablaDinamica(eventosCalendario) {
+        function renderizarTablaPorDefecto() {
+            const container = document.getElementById('agenda-rows');
+            container.innerHTML = '';
+            bloquesActuales = [];
+            const bloquesPorDefecto = ["08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00"];
+            bloquesPorDefecto.forEach(b => agregarFila(b, b.includes("12:00") ? "Lunch" : ""));
+        }
+
+        function procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar) {
             const container = document.getElementById('agenda-rows');
             container.innerHTML = '';
             bloquesActuales = [];
 
-            if (!eventosCalendario || eventosCalendario.length === 0) {
-                const bloquesPorDefecto = ["08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00"];
-                bloquesPorDefecto.forEach(b => agregarFila(b, b.includes("12:00") ? "Lunch" : ""));
+            if (horariosBase.length === 0) {
+                renderizarTablaDinamicaEstandar(eventosCalendar);
                 return;
             }
+
+            const reuniones = eventosCalendar.map(e => ({
+                titulo: `🚨 [CALENDAR] ${e.summary || "Reunión"}`,
+                inicio: parseTimeToMinutes(formatTimeFromDate(new Date(e.start.dateTime || e.start.date))),
+                fin: parseTimeToMinutes(formatTimeFromDate(new Date(e.end.dateTime || e.end.date)))
+            })).sort((a,b) => a.inicio - b.inicio);
+
+            let colaAuditorias = fragmentosPrioridad.map(p => {
+                const match = p.detalle.match(/\(([^)]+)h\)/);
+                const hrs = match ? parseFloat(match[1]) : 1.0;
+                return { nombre: p.detalle, minutosRestantes: Math.round(hrs * 60) };
+            });
+
+            horariosBase.forEach(ruta => {
+                let tiempoActual = parseTimeToMinutes(ruta.inicio);
+                const tiempoFinJornada = parseTimeToMinutes(ruta.fin);
+                const sucursalActiva = ruta.detalle;
+
+                while (tiempoActual < tiempoFinJornada) {
+                    let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
+                    
+                    if (reunionActiva) {
+                        const finBloque = Math.min(reunionActiva.fin, tiempoFinJornada);
+                        agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, reunionActiva.titulo);
+                        tiempoActual = finBloque;
+                        continue;
+                    }
+
+                    let proximaReunion = reuniones.find(r => r.inicio > tiempoActual && r.inicio < tiempoFinJornada);
+                    let limiteTiempo = proximaReunion ? proximaReunion.inicio : tiempoFinJornada;
+                    let espacioLibreMins = limiteTiempo - tiempoActual;
+
+                    if (colaAuditorias.length > 0) {
+                        let auditoria = colaAuditorias[0];
+                        if (auditoria.minutosRestantes <= espacioLibreMins) {
+                            const finBloque = tiempoActual + auditoria.minutosRestantes;
+                            agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, `💼 [${sucursalActiva}] ${auditoria.nombre}`);
+                            tiempoActual = finBloque;
+                            colaAuditorias.shift();
+                        } else {
+                            const finBloque = tiempoActual + espacioLibreMins;
+                            agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, `💼 [${sucursalActiva}] ${auditoria.nombre} (Parte 1)`);
+                            auditoria.minutosRestantes -= espacioLibreMins;
+                            tiempoActual = finBloque;
+                        }
+                    } else {
+                        agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(limiteTiempo)}`, `🏢 [${sucursalActiva}] Gestión General`);
+                        tiempoActual = limiteTiempo;
+                    }
+                }
+            });
+        }
+
+        function renderizarTablaDinamicaEstandar(eventosCalendario) {
+            const container = document.getElementById('agenda-rows');
+            container.innerHTML = '';
+            bloquesActuales = [];
 
             const eventosFiltrados = eventosCalendario
                 .filter(e => e.start && (e.start.dateTime || e.start.date))
@@ -160,28 +246,16 @@
                 }))
                 .sort((a, b) => a.inicio - b.inicio);
 
-            if (eventosFiltrados.length === 0) return;
+            if (eventosFiltrados.length === 0) { renderizarTablaPorDefecto(); return; }
 
             let horaActual = new Date(eventosFiltrados[0].inicio);
-
             eventosFiltrados.forEach(evt => {
                 if (evt.inicio > horaActual) {
-                    const rangoLibre = `${formatTime(horaActual)} - ${formatTime(evt.inicio)}`;
-                    agregarFila(rangoLibre, "");
+                    agregarFila(`${formatTimeFromDate(horaActual)} - ${formatTimeFromDate(evt.inicio)}`, "");
                 }
-
-                const rangoReunion = `${formatTime(evt.inicio)} - ${formatTime(evt.fin)}`;
-                agregarFila(rangoReunion, evt.titulo);
-
+                agregarFila(`${formatTimeFromDate(evt.inicio)} - ${formatTimeFromDate(evt.fin)}`, evt.titulo);
                 horaActual = new Date(evt.fin);
             });
-
-            const horaFinJornada = new Date(horaActual);
-            horaFinJornada.setHours(16, 0, 0, 0);
-            if (horaActual < horaFinJornada) {
-                const fancyRango = `${formatTime(horaActual)} - 16:00`;
-                agregarFila(fancyRango, "");
-            }
         }
 
         function gapiLoaded() { gapi.load('client', initializeGapiClient); }
@@ -190,9 +264,7 @@
                 await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
                 gapiInited = true;
                 maybeEnableButtons();
-            } catch(e) {
-                console.error("Error cargando GAPI:", e);
-            }
+            } catch(e) { console.error(e); }
         }
         
         function gisLoaded() {
@@ -200,17 +272,14 @@
                 tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: '' });
                 gisInited = true;
                 maybeEnableButtons();
-            } catch(e) {
-                console.error("Error cargando GIS:", e);
-            }
+            } catch(e) { console.error(e); }
         }
         
-        // Activa el botón solo si ambas librerías respondieron bien
         function maybeEnableButtons() { 
             if (gapiInited && gisInited) { 
                 const btn = document.getElementById('auth-btn');
                 if(btn) {
-                    btn.innerText = "Sincronizar Google Calendar";
+                    btn.innerText = "Sincronizar Ecosistema BTM";
                     btn.className = "bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer";
                     btn.removeAttribute('disabled');
                 }
@@ -218,41 +287,46 @@
         }
 
         async function handleAuthClick() {
-            if (!tokenClient) {
-                alert("La API de Google no se pudo inicializar. Alerta: Revisa que tu URL de navegador sea exactamente http://localhost:5500 y NO 127.0.0.1.");
-                return;
-            }
-
+            if (!tokenClient) return;
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) { throw (resp); }
                 document.getElementById('auth-btn').innerText = "Sincronizado ✓";
                 document.getElementById('auth-btn').className = "bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm";
-                
-                try { await listarEventosDeHoy(); } catch(e) { console.error("Error en Hoy:", e); }
-                try { await listarEventosDeManana(); } catch(e) { console.error("Error en Mañana:", e); }
-                try { await cargarTodosDesdeSheet(); } catch(e) { console.error("Error en Sheet:", e); }
+                await sincronizarEcosistemaCompleto();
             };
-
             if (gapi.client.getToken() === null) { tokenClient.requestAccessToken({prompt: 'consent'}); } 
             else { tokenClient.requestAccessToken({prompt: ''}); }
         }
 
-        async function listarEventosDeHoy() {
+        async function sincronizarEcosistemaCompleto() {
+            let eventosCalendar = [];
             const hoy = new Date();
             const inicioDia = new Date(hoy.setHours(0,0,0,0)).toISOString();
             const finDia = new Date(hoy.setHours(23,59,59,999)).toISOString();
-
             try {
                 const response = await gapi.client.calendar.events.list({
-                    'calendarId': CALENDAR_ID,
-                    'timeMin': inicioDia,
-                    'timeMax': finDia,
-                    'singleEvents': true,
-                    'orderBy': 'startTime',
+                    'calendarId': CALENDAR_ID, 'timeMin': inicioDia, 'timeMax': finDia, 'singleEvents': true, 'orderBy': 'startTime',
                 });
-                renderizarTablaDinamica(response.result.items);
-            } catch (err) {
-                console.error("Error al obtener eventos de Google Calendar: ", err);
+                eventosCalendar = response.result.items || [];
+            } catch (err) { console.error(err); }
+
+            try { await cargarTodosDesdeSheet(); } catch(e) {}
+            try { await listarEventosDeManana(); } catch(e) {}
+
+            try {
+                const response = await fetch(`${URL_APPLICATIONS_SCRIPT}?action=getWeeklyData`);
+                const resultado = await response.json();
+                
+                const lunesActualStr = obtenerLunesFechaString();
+                const diaHoyStr = obtenerDiaSemanaEspanol();
+
+                const registrosHoy = resultado.data.filter(r => r.fechaLunes === lunesActualStr && r.dia === diaHoyStr);
+                const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
+                const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
+
+                procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
+            } catch(err) {
+                renderizarTablaDinamicaEstandar(eventosCalendar);
             }
         }
 
@@ -260,83 +334,46 @@
             try {
                 const response = await fetch(URL_APPLICATIONS_SCRIPT);
                 const resultado = await response.json();
-                
                 if (resultado && resultado.hoy) {
                     const inputsFollowUp = document.querySelectorAll('#follow-ups-container input');
                     resultado.hoy.forEach((tarea, index) => {
-                        if (inputsFollowUp[index]) {
-                            inputsFollowUp[index].value = tarea || "";
-                        }
+                        if (inputsFollowUp[index]) inputsFollowUp[index].value = tarea || "";
                     });
                 }
-
-                if (resultado && resultado.manana) {
-                    const inputsReminders = document.querySelectorAll('#reminders-container input');
-                    let slotIndex = 0;
-                    
-                    resultado.manana.forEach((tarea) => {
-                        if (tarea && tarea.trim() !== "") {
-                            while (slotIndex < inputsReminders.length) {
-                                if (inputsReminders[slotIndex].value === "" || inputsReminders[slotIndex].value === "•" || inputsReminders[slotIndex].value.startsWith("[PENDIENTE]")) {
-                                    inputsReminders[slotIndex].value = `[PENDIENTE] ${tarea}`;
-                                    slotIndex++;
-                                    break;
-                                }
-                                slotIndex++;
-                            }
-                        }
-                    });
-                }
-            } catch (err) {
-                console.error("Error al conectar con el Sheets de TO-DOS:", err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         async function listarEventosDeManana() {
             const hoy = new Date();
             const manana = new Date(hoy);
             manana.setDate(hoy.getDate() + 1);
-            
             const inicioManana = new Date(manana.setHours(0,0,0,0)).toISOString();
             const finManana = new Date(manana.setHours(23,59,59,999)).toISOString();
-
             try {
                 const response = await gapi.client.calendar.events.list({
-                    'calendarId': CALENDAR_ID,
-                    'timeMin': inicioManana,
-                    'timeMax': finManana,
-                    'singleEvents': true,
-                    'orderBy': 'startTime',
-                    'maxResults': 3
+                    'calendarId': CALENDAR_ID, 'timeMin': inicioManana, 'timeMax': finManana, 'singleEvents': true, 'orderBy': 'startTime', 'maxResults': 3
                 });
-
                 const eventos = response.result.items || [];
                 const inputsReminders = document.querySelectorAll('#reminders-container input');
-                
                 inputsReminders.forEach(input => input.value = "");
-
                 eventos.forEach((evt, index) => {
                     if (inputsReminders[index]) {
-                        const horaEvt = evt.start.dateTime ? formatTime(new Date(evt.start.dateTime)) : "Todo el día";
+                        const horaEvt = evt.start.dateTime ? formatTimeFromDate(new Date(evt.start.dateTime)) : "Todo el día";
                         inputsReminders[index].value = `[REUNIÓN] ${horaEvt} - ${evt.summary || "Actividad"}`;
                     }
                 });
-            } catch (err) {
-                console.error("Error al traer agenda de mañana:", err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         function copiarAgendaTexto() {
             let textoAgenda = `📝 *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
             textoAgenda += `*TIME & ACTIVITIES:*\n`;
-            
             bloquesActuales.forEach(bloque => {
-                const valor = document.getElementById(bloque.id).value || "—";
-                textoAgenda += `• ${bloque.label}: ${valor}\n`;
+                const elem = document.getElementById(bloque.id);
+                textoAgenda += `• ${bloque.label}: ${elem ? elem.value : "—"}\n`;
             });
-
             navigator.clipboard.writeText(textoAgenda);
-            alert("¡Agenda dinámica copiada al portapapeles!");
+            alert("Agenda copiada.");
         }
     </script>
 </body>
