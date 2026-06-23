@@ -8,15 +8,16 @@
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </head>
-<body class="bg-gray-100 font-sans p-4 md:p-8 text-gray-800">
+<body class="bg-gray-100 font-sans p-4 md:p-8 text-slate-800">
 
     <div class="max-w-4xl mx-auto bg-white border border-gray-300 shadow-sm rounded-sm overflow-hidden">
+        
         <div class="border-b-4 border-slate-900 p-4 flex justify-between items-center bg-slate-50">
             <h1 class="text-2xl md:text-3xl font-black tracking-wider text-slate-900 uppercase">
                 DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span>
             </h1>
             <div id="auth-controls">
-                <button id="auth-btn" disabled onclick="handleAuthClick()" class="bg-gray-400 text-white text-xs font-bold px-4 py-2 rounded cursor-not-allowed transition">
+                <button id="auth-btn" disabled onclick="handleAuthClick()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
                     Cargando Google API...
                 </button>
             </div>
@@ -127,12 +128,17 @@
         }
 
         function parseTimeToMinutes(timeStr) {
+            if(!timeStr || !timeStr.includes(':')) return 0;
             const [h, m] = timeStr.split(':').map(Number);
             return h * 60 + m;
         }
 
+        function cleanString(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+        }
+
         function obtenerDiaSemanaEspanol() {
-            const dias = ["Sábado", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+            const dias = ["sabado", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
             return dias[new Date().getDay()];
         }
 
@@ -310,8 +316,8 @@
                 eventosCalendar = response.result.items || [];
             } catch (err) { console.error(err); }
 
+            // Intentar cargar tareas tradicionales si existen pestañas HOY/MAÑANA
             try { await cargarTodosDesdeSheet(); } catch(e) {}
-            try { await listarEventosDeManana(); } catch(e) {}
 
             try {
                 const response = await fetch(`${URL_APPLICATIONS_SCRIPT}?action=getWeeklyData`);
@@ -320,12 +326,17 @@
                 const lunesActualStr = obtenerLunesFechaString();
                 const diaHoyStr = obtenerDiaSemanaEspanol();
 
-                const registrosHoy = resultado.data.filter(r => r.fechaLunes === lunesActualStr && r.dia === diaHoyStr);
+                // Filtrar limpiando acentos y tildes para garantizar match perfecto
+                const registrosHoy = resultado.data.filter(r => {
+                    return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
+                });
+
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
 
                 procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
             } catch(err) {
+                console.error("Fallo al aplicar algoritmo:", err);
                 renderizarTablaDinamicaEstandar(eventosCalendar);
             }
         }
@@ -343,37 +354,16 @@
             } catch (err) { console.error(err); }
         }
 
-        async function listarEventosDeManana() {
-            const hoy = new Date();
-            const manana = new Date(hoy);
-            manana.setDate(hoy.getDate() + 1);
-            const inicioManana = new Date(manana.setHours(0,0,0,0)).toISOString();
-            const finManana = new Date(manana.setHours(23,59,59,999)).toISOString();
-            try {
-                const response = await gapi.client.calendar.events.list({
-                    'calendarId': CALENDAR_ID, 'timeMin': inicioManana, 'timeMax': finManana, 'singleEvents': true, 'orderBy': 'startTime', 'maxResults': 3
-                });
-                const eventos = response.result.items || [];
-                const inputsReminders = document.querySelectorAll('#reminders-container input');
-                inputsReminders.forEach(input => input.value = "");
-                eventos.forEach((evt, index) => {
-                    if (inputsReminders[index]) {
-                        const horaEvt = evt.start.dateTime ? formatTimeFromDate(new Date(evt.start.dateTime)) : "Todo el día";
-                        inputsReminders[index].value = `[REUNIÓN] ${horaEvt} - ${evt.summary || "Actividad"}`;
-                    }
-                });
-            } catch (err) { console.error(err); }
-        }
-
         function copiarAgendaTexto() {
-            let textoAgenda = `📝 *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
+            let textoAgenda = `¼️ *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
             textoAgenda += `*TIME & ACTIVITIES:*\n`;
             bloquesActuales.forEach(bloque => {
                 const elem = document.getElementById(bloque.id);
-                textoAgenda += `• ${bloque.label}: ${elem ? elem.value : "—"}\n`;
+                const valor = elem ? elem.value : "—";
+                textoAgenda += `• ${bloque.label}: ${valor}\n`;
             });
             navigator.clipboard.writeText(textoAgenda);
-            alert("Agenda copiada.");
+            alert("¡Agenda dinámica calculada y copiada al portapapeles!");
         }
     </script>
 </body>
