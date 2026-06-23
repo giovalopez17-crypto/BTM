@@ -135,7 +135,6 @@
             return h * 60 + m;
         }
 
-        // Limpia acentos y mayúsculas de los días de la semana
         function cleanString(str) {
             if(!str) return "";
             return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
@@ -202,6 +201,11 @@
                 let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
                 const sucursalActiva = ruta.detalle;
 
+                if (obtenerDiaSemanaEspanol() === "sabado") {
+                    const limiteSabado = parseTimeToMinutes("12:00");
+                    if (tiempoFinJornada > limiteSabado) tiempoFinJornada = limiteSabado;
+                }
+
                 while (tiempoActual < tiempoFinJornada) {
                     let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
                     
@@ -242,7 +246,7 @@
             container.innerHTML = '';
             bloquesActuales = [];
 
-            const eventosFiltrados = eventosCalendario
+            const eventosFiltrados = eventosCalendar
                 .filter(e => e.start && (e.start.dateTime || e.start.date))
                 .map(e => ({
                     titulo: e.summary || "Actividad",
@@ -324,21 +328,9 @@
                 const lunesActualStr = obtenerLunesFechaString(); 
                 const diaHoyStr = obtenerDiaSemanaEspanol();
 
-                // Extraemos solo los dígitos de la fecha local actual del lunes ("20260622")
-                const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, ""); 
-
-                // Filtro avanzado tolerante al formato del Sheet
+                // Filtrar registros emparejando Lunes de esta semana y el día de hoy sin acentos
                 const registrosHoy = resultado.data.filter(r => {
-                    if (!r.fechaLunes) return false;
-                    
-                    // Extraer solo dígitos del Sheet (ej. si viene "22/06/2026" o "2026-06-22")
-                    const fechaSheetLimpia = r.fechaLunes.toString().replace(/[^0-9]/g, "");
-                    
-                    // Comprobar formato ISO (YYYYMMDD) o formato Latino (DDMMYYYY)
-                    const matchFecha = (fechaSheetLimpia === lunesLimpioLocal) || 
-                                       (fechaSheetLimpia === (lunesLimpioLocal.substring(6,8) + lunesLimpioLocal.substring(4,6) + lunesLimpioLocal.substring(0,4)));
-
-                    return matchFecha && cleanString(r.dia) === diaHoyStr;
+                    return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
                 });
 
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
