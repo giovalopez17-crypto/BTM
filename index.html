@@ -121,12 +121,14 @@
             return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
         }
 
+        // Convierte minutos de regreso a formato HH:MM
         function formatTimeFromMinutes(mins) {
             const h = Math.floor(mins / 60).toString().padStart(2, '0');
             const m = (mins % 60).toString().padStart(2, '0');
             return `${h}:${m}`;
         }
 
+        // Parsea HH:MM a minutos totales del día
         function parseTimeToMinutes(timeStr) {
             if(!timeStr || !timeStr.includes(':')) return 0;
             const parts = timeStr.split(':');
@@ -135,13 +137,15 @@
             return h * 60 + m;
         }
 
+        // Limpia acentos y mayúsculas
         function cleanString(str) {
             if(!str) return "";
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+            return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
         }
 
         function obtenerDiaSemanaEspanol() {
-            const dias = ["sabado", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+            // 0: domingo, 1: lunes, 2: martes, 3: miercoles, 4: jueves, 5: viernes, 6: sabado
+            const dias = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
             return dias[new Date().getDay()];
         }
 
@@ -184,29 +188,36 @@
             container.innerHTML = '';
             bloquesActuales = [];
 
-            if (horariosBase.length === 0) {
-                renderizarTablaDinamicaEstandar(eventosCalendar);
-                return;
-            }
-
+            // Agrupar y mapear reuniones de Google Calendar
             const reuniones = eventosCalendar.map(e => ({
                 titulo: `🚨 [CALENDAR] ${e.summary || "Reunión"}`,
                 inicio: parseTimeToMinutes(formatTimeFromDate(new Date(e.start.dateTime || e.start.date))),
                 fin: parseTimeToMinutes(formatTimeFromDate(new Date(e.end.dateTime || e.end.date)))
             })).sort((a,b) => a.inicio - b.inicio);
 
+            // Mapear cola de auditorías prioritarias buscando el patrón (Xh)
             let colaAuditorias = fragmentosPrioridad.map(p => {
                 const match = p.detalle.match(/\(([^)]+)h\)/);
                 const hrs = match ? parseFloat(match[1]) : 1.0;
                 return { nombre: p.detalle, minutosRestantes: Math.round(hrs * 60) };
             });
 
+            // Procesar cada ruta base horaria asignada al día de hoy
             horariosBase.forEach(ruta => {
                 let tiempoActual = parseTimeToMinutes(ruta.inicio);
-                const tiempoFinJornada = parseTimeToMinutes(ruta.fin);
+                let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
                 const sucursalActiva = ruta.detalle;
 
+                // Si es sábado, forzar el límite laboral a las 12:00 PM por política interna
+                if (obtenerDiaSemanaEspanol() === "sabado") {
+                    const limiteSabado = parseTimeToMinutes("12:00");
+                    if (tiempoFinJornada > limiteSabado) {
+                        tiempoFinJornada = limiteSabado;
+                    }
+                }
+
                 while (tiempoActual < tiempoFinJornada) {
+                    // Ver si hay una reunión cruzándose justo ahora
                     let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
                     
                     if (reunionActiva) {
@@ -216,10 +227,12 @@
                         continue;
                     }
 
+                    // Buscar cuándo empieza la siguiente reunión o el fin de jornada
                     let proximaReunion = reuniones.find(r => r.inicio > tiempoActual && r.inicio < tiempoFinJornada);
                     let limiteTiempo = proximaReunion ? proximaReunion.inicio : tiempoFinJornada;
                     let espacioLibreMins = limiteTiempo - tiempoActual;
 
+                    // Asignar tareas de la cola de auditorías de Sheets en el tiempo libre disponible
                     if (colaAuditorias.length > 0) {
                         let auditoria = colaAuditorias[0];
                         if (auditoria.minutosRestantes <= espacioLibreMins) {
@@ -289,7 +302,6 @@
                 const btn = document.getElementById('auth-btn');
                 if(btn) {
                     btn.innerText = "Sincronizar Ecosistema BTM";
-                    btn.className = "bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer";
                     btn.removeAttribute('disabled');
                 }
             } 
@@ -312,12 +324,13 @@
             const hoy = new Date();
             const inicioDia = new Date(hoy.setHours(0,0,0,0)).toISOString();
             const finDia = new Date(hoy.setHours(23,59,59,999)).toISOString();
+            
             try {
                 const response = await gapi.client.calendar.events.list({
                     'calendarId': CALENDAR_ID, 'timeMin': inicioDia, 'timeMax': finDia, 'singleEvents': true, 'orderBy': 'startTime',
                 });
                 eventosCalendar = response.result.items || [];
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Error cargando Calendar: ", err); }
 
             try { await cargarTodosDesdeSheet(); } catch(e) {}
 
@@ -328,16 +341,30 @@
                 const lunesActualStr = obtenerLunesFechaString();
                 const diaHoyStr = obtenerDiaSemanaEspanol();
 
+                console.log("Fecha Lunes Buscada:", lunesActualStr);
+                console.log("Día de hoy Buscado:", diaHoyStr);
+                console.log("Registros crudos desde el Sheet:", resultado.data);
+
+                // Filtrar registros emparejando Lunes de esta semana y el día de hoy
                 const registrosHoy = resultado.data.filter(r => {
-                    return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
+                    const matchFecha = r.fechaLunes === lunesActualStr;
+                    const matchDia = cleanString(r.dia) === diaHoyStr;
+                    return matchFecha && matchDia;
                 });
+
+                console.log("Registros filtrados para hoy:", registrosHoy);
 
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
 
-                procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
+                if (horariosBase.length === 0) {
+                    console.warn("No se encontraron registros de tipo HORARIO para hoy en la pestaña WEEKLY.");
+                    renderizarTablaDinamicaEstandar(eventosCalendar);
+                } else {
+                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
+                }
             } catch(err) {
-                console.error("Fallo al aplicar algoritmo:", err);
+                console.error("Fallo crítico al aplicar algoritmo BTM:", err);
                 renderizarTablaDinamicaEstandar(eventosCalendar);
             }
         }
@@ -352,7 +379,7 @@
                         if (inputsFollowUp[index]) inputsFollowUp[index].value = tarea || "";
                     });
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Error al cargar HOY:", err); }
         }
 
         function copiarAgendaTexto() {
@@ -364,7 +391,7 @@
                 textoAgenda += `• ${bloque.label}: ${valor}\n`;
             });
             navigator.clipboard.writeText(textoAgenda);
-            alert("¡Agenda dinámica calculada y copiada al portapapeles!");
+            alert("¡Agenda de la jornada copiada al portapapeles!");
         }
     </script>
 </body>
