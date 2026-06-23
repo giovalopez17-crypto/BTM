@@ -129,11 +129,14 @@
 
         function parseTimeToMinutes(timeStr) {
             if(!timeStr || !timeStr.includes(':')) return 0;
-            const [h, m] = timeStr.split(':').map(Number);
+            const parts = timeStr.split(':');
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(params = parts[1]) || 0;
             return h * 60 + m;
         }
 
         function cleanString(str) {
+            if(!str) return "";
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
         }
 
@@ -231,6 +234,14 @@
                             tiempoActual = finBloque;
                         }
                     } else {
+                        // Si es sábado, forzar fin de jornada a las 12:00 PM por horario laboral establecido
+                        let finEfectivo = limiteTiempo;
+                        if (obtenerDiaSemanaEspanol() === "sabado") {
+                            finEcosistemaSab = parseTimeToMinutes("12:00");
+                            if (limiteTiempo > finBloque && tiempoActual < finBloque) {
+                                limiteTiempo = finBloque;
+                            }
+                        }
                         agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(limiteTiempo)}`, `🏢 [${sucursalActiva}] Gestión General`);
                         tiempoActual = limiteTiempo;
                     }
@@ -316,7 +327,6 @@
                 eventosCalendar = response.result.items || [];
             } catch (err) { console.error(err); }
 
-            // Intentar cargar tareas tradicionales si existen pestañas HOY/MAÑANA
             try { await cargarTodosDesdeSheet(); } catch(e) {}
 
             try {
@@ -326,7 +336,6 @@
                 const lunesActualStr = obtenerLunesFechaString();
                 const diaHoyStr = obtenerDiaSemanaEspanol();
 
-                // Filtrar limpiando acentos y tildes para garantizar match perfecto
                 const registrosHoy = resultado.data.filter(r => {
                     return r.fechaLunes === lunesActualStr && cleanString(r.dia) === diaHoyStr;
                 });
@@ -355,7 +364,7 @@
         }
 
         function copiarAgendaTexto() {
-            let textoAgenda = `¼️ *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
+            let textoAgenda = `📝 *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
             textoAgenda += `*TIME & ACTIVITIES:*\n`;
             bloquesActuales.forEach(bloque => {
                 const elem = document.getElementById(bloque.id);
