@@ -298,9 +298,7 @@
             const card = document.createElement('div');
             card.id = `card-${idBloqueIncremental}`;
             card.draggable = true;
-            card.ondragstart = (e) => {
-                e.dataTransfer.setData("text/plain", e.target.id);
-            };
+            card.ondragstart = (e) => { e.dataTransfer.setData("text/plain", e.target.id); };
             
             card.className = `${clase} p-2 text-xs font-bold rounded-sm shadow-sm cursor-grab flex justify-between items-center`;
             card.innerHTML = `
@@ -369,7 +367,7 @@
             let horariosFinales = [];
             let prioridadesFinales = [];
 
-            // 1. Recopilar Horarios de Rutas
+            // 1. Recopilar Horarios
             DIAS.forEach(dia => {
                 const filas = document.getElementById(`blocks-${dia}`).querySelectorAll('.row-bloque');
                 filas.forEach(fila => {
@@ -387,7 +385,7 @@
                 });
             });
 
-            // 2. Recopilar Prioridades/Auditorías arrastradas
+            // 2. Recopilar Prioridades
             DIAS.forEach(dia => {
                 const zone = document.getElementById(`drop-${dia}`);
                 if(zone) {
@@ -406,12 +404,10 @@
             });
 
             try {
-                // Enviamos un JSON unificado. El Apps Script se encargará de repartirlo en HORARIOS y PRIORIDADES automáticamente.
+                // ENVÍO DE TEXT PLANO EVITA ERRORES DE CORS ASOCIADOS A REDIRECCIONES DE GOOGLE
                 await fetch(URL_APPLICATIONS_SCRIPT, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ 
                         fechaLunes: fechaLunesSeleccionada, 
                         horarios: horariosFinales,
