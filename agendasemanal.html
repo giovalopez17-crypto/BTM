@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTM - Weekly Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Lato', sans-serif; }
+        h1, h2, h3 { font-family: 'Poppins', sans-serif; }
+        .branch-btn.active-pinula { background-color: #bae6fd; border-color: #0284c7; color: #0369a1; }
+        .branch-btn.active-primma { background-color: #fed7aa; border-color: #ea580c; color: #c2410c; }
+        .branch-btn.active-metro { background-color: #bbf7d0; border-color: #16a34a; color: #15803d; }
+        .branch-btn.active-z13 { background-color: #e9d5ff; border-color: #9333ea; color: #7e22ce; }
+        .branch-btn.active-centro { background-color: #fef08a; border-color: #ca8a04; color: #a16207; }
+        .branch-btn.active-wfh { background-color: #f1f5f9; border-color: #64748b; color: #475569; }
+        
+        /* Colores pastel drag blocks */
+        .block-qa { background-color: #fee2e2; border-left: 5px solid #ef4444; color: #991b1b; }
+        .block-hw { background-color: #ffedd5; border-left: 5px solid #f97316; color: #9a3412; }
+        .block-english { background-color: #e0f2fe; border-left: 5px solid #3b82f6; color: #075985; }
+        .block-csat { background-color: #dcfce7; border-left: 5px solid #22c55e; color: #166534; }
+        .block-pt { background-color: #faf5ff; border-left: 5px solid #a855f7; color: #6b21a8; }
+        .block-next { background-color: #f0fdf4; border-left: 5px solid #14b8a6; color: #115e59; }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8 text-slate-800">
+
+    <div class="max-w-6xl mx-auto bg-white border border-slate-300 shadow-sm rounded-sm overflow-hidden">
+        
+        <div class="border-b-4 border-slate-900 p-6 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900 uppercase">WEEKLY MASTER</h1>
+                <p class="text-xs text-slate-500 font-medium tracking-wider uppercase mt-1">Panel Estratégico de Control Semanal</p>
+            </div>
+            
+            <div class="flex bg-slate-200 p-1 rounded gap-1 border border-slate-300">
+                <button onclick="cambiarSemana('actual')" id="btn-sem-actual" class="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded shadow-sm transition uppercase">Semana Actual</button>
+                <button onclick="cambiarSemana('proxima')" id="btn-sem-proxima" class="text-slate-600 text-xs font-bold px-4 py-2 rounded hover:text-slate-900 transition uppercase">Próxima Semana</button>
+            </div>
+        </div>
+
+        <div class="flex border-b border-slate-200 bg-slate-100 font-bold text-sm">
+            <button onclick="switchTab('horarios')" id="tab-horarios" class="px-6 py-3 border-b-2 border-slate-900 text-slate-900 bg-white">1. RUTAS Y HORARIOS</button>
+            <button onclick="switchTab('prioridades')" id="tab-prioridades" class="px-6 py-3 text-slate-500 hover:text-slate-900 transition">2. AUDITORÍAS Y PRIORIDADES</button>
+        </div>
+
+        <div id="content-horarios" class="p-6 space-y-6">
+            <div id="dias-container" class="space-y-6 divide-y divide-slate-100"></div>
+        </div>
+
+        <div id="content-prioridades" class="p-6 hidden space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-4 border border-slate-200 rounded-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Coordinadores Activos</label>
+                    <input type="number" id="input-coordinadores" value="4" min="1" onchange="calcularBarras()" class="w-24 border border-slate-300 px-3 py-1.5 font-bold rounded-sm text-center bg-white outline-none">
+                </div>
+                
+                <div class="md:col-span-2 space-y-3">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            <span>Horas Generadas (Meta: 20h)</span>
+                            <span id="txt-bar-gen">0 / 20 hrs</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                            <div id="bar-gen" class="bg-blue-400 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            <span>Horas Asignadas en Calendario</span>
+                            <span id="txt-bar-asig">0 / 20 hrs</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                            <div id="bar-asig" class="bg-emerald-400 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">1. Sugeridos por Equipo (Multiplica por Coordinadores):</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="generarBloques('QA')" class="bg-red-50 hover:bg-red-100 border border-red-200 font-bold text-xs px-4 py-2.5 rounded-sm text-red-700 transition cursor-pointer">+ Auditoría de QA (2.5h)</button>
+                        <button onclick="generarBloques('HW')" class="bg-orange-50 hover:bg-orange-100 border border-orange-200 font-bold text-xs px-4 py-2.5 rounded-sm text-orange-700 transition cursor-pointer">+ Auditoría HW Audit (1.5h)</button>
+                        <button onclick="generarBloques('ENGLISH')" class="bg-sky-50 hover:bg-sky-100 border border-sky-200 font-bold text-xs px-4 py-2.5 rounded-sm text-sky-700 transition cursor-pointer">+ English LVL (1h)</button>
+                        <button onclick="generarBloques('CSAT')" class="bg-green-50 hover:bg-green-100 border border-green-200 font-bold text-xs px-4 py-2.5 rounded-sm text-green-700 transition cursor-pointer">+ CSAT (0.5h)</button>
+                        <button onclick="generarBloques('PT')" class="bg-purple-50 hover:bg-purple-100 border border-purple-200 font-bold text-xs px-4 py-2.5 rounded-sm text-purple-700 transition cursor-pointer">+ PT (0.5h)</button>
+                        <button onclick="generarBloques('NEXT')" class="bg-teal-50 hover:bg-teal-100 border border-teal-200 font-bold text-xs px-4 py-2.5 rounded-sm text-teal-700 transition cursor-pointer">+ Next Lvl (1h)</button>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">2. Bloques Individuales (Genera solo 1 por clic):</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="generarBlockIndividual('HW_IND')" class="bg-orange-50/60 hover:bg-orange-100/80 border border-orange-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-orange-800 transition cursor-pointer">+ HW (1h)</button>
+                        <button onclick="generarBlockIndividual('NEXT_IND')" class="bg-teal-50/60 hover:bg-teal-100/80 border border-teal-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-teal-800 transition cursor-pointer">+ Next Level (0.45h)</button>
+                        <button onclick="generarBlockIndividual('QA_IND')" class="bg-red-50/60 hover:bg-red-100/80 border border-red-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-red-800 transition cursor-pointer">+ QA (1.75h)</button>
+                        <button onclick="generarBlockIndividual('ENGLISH_IND')" class="bg-sky-50/60 hover:bg-sky-100/80 border border-sky-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-sky-800 transition cursor-pointer">+ English Lvl (1h)</button>
+                        <button onclick="generarBlockIndividual('CSAT_IND')" class="bg-green-50/60 hover:bg-green-100/80 border border-green-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-green-800 transition cursor-pointer">+ CSAT (0.25h)</button>
+                        <button onclick="generarBlockIndividual('PT_IND')" class="bg-purple-50/60 hover:bg-purple-100/80 border border-purple-200/80 font-bold text-xs px-4 py-2.5 rounded-sm text-purple-800 transition cursor-pointer">+ PT (0.25h)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-sm flex flex-col">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-2 mb-3">Bloques por Asignar</h3>
+                    <div id="banco-bloques" class="space-y-2 flex-1 min-h-[300px]" ondragover="allowDrop(event)" ondrop="drop(event, 'banco')"></div>
+                </div>
+
+                <div class="md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Lunes</span>
+                        <div id="drop-Lunes" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Lunes')"></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Martes</span>
+                        <div id="drop-Martes" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Martes')"></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Miércoles</span>
+                        <div id="drop-Miércoles" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Miércoles')"></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Jueves</span>
+                        <div id="drop-Jueves" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Jueves')"></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Viernes</span>
+                        <div id="drop-Viernes" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Viernes')"></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 p-3 rounded-sm flex flex-col min-h-[180px]">
+                        <span class="text-sm font-bold text-slate-900 border-b pb-1.5 mb-2">Sábado</span>
+                        <div id="drop-Sábado" class="space-y-2 flex-1 drop-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Sábado')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <button onclick="guardarEcosistemaCompleto()" id="save-btn" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm px-10 py-3 rounded tracking-wider uppercase transition shadow-sm cursor-pointer">
+                Guardar Ecosistema Completo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const URL_APPLICATIONS_SCRIPT = 'https://script.google.com/macros/s/AKfycbz1vo2oZJCv1Cm0ATDpCuRsBzNB67TxxKmClogFckChtiyw_TQ19LJsX4E_sHIqDhY/exec'; 
+        
+        const SUCURSALES = ["PINULA", "GALERIAS PRIMMA", "METRONORTE", "ZONA 13", "METROCENTRO", "WFH"];
+        const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        
+        let fechaLunesSeleccionada = "";
+        let idBloqueIncremental = 0;
+        let bibliotecaBloques = {}; 
+
+        document.addEventListener("DOMContentLoaded", () => { cambiarSemana('actual'); });
+
+        function switchTab(tab) {
+            const tabH = document.getElementById('tab-horarios');
+            const tabP = document.getElementById('tab-prioridades');
+            const contentH = document.getElementById('content-horarios');
+            const contentP = document.getElementById('content-prioridades');
+
+            if (tab === 'horarios') {
+                tabH.className = "px-6 py-3 border-b-2 border-slate-900 text-slate-900 bg-white font-bold";
+                tabP.className = "px-6 py-3 text-slate-500 hover:text-slate-900 transition font-bold";
+                contentH.classList.remove('hidden');
+                contentP.classList.add('hidden');
+            } else {
+                tabP.className = "px-6 py-3 border-b-2 border-slate-900 text-slate-900 bg-white font-bold";
+                tabH.className = "px-6 py-3 text-slate-500 hover:text-slate-900 transition font-bold";
+                contentP.classList.remove('hidden');
+                contentH.classList.add('hidden');
+            }
+        }
+
+        function obtenerLunes(tipo) {
+            let hoy = new Date();
+            let diaSemana = hoy.getDay(); 
+            let diferencia = diaSemana === 0 ? -6 : 1 - diaSemana; 
+            let lunesActual = new Date(hoy.setDate(hoy.getDate() + diferencia));
+            if (tipo === 'proxima') lunesActual.setDate(lunesActual.getDate() + 7);
+            return lunesActual.toISOString().split('T')[0];
+        }
+
+        function cambiarSemana(tipo) {
+            fechaLunesSeleccionada = obtenerLunes(tipo);
+            document.getElementById('btn-sem-actual').className = tipo === 'actual' ? "bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded shadow-sm transition uppercase" : "text-slate-600 text-xs font-bold px-4 py-2 rounded hover:text-slate-900 transition uppercase";
+            document.getElementById('btn-sem-proxima').className = tipo === 'proxima' ? "bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded shadow-sm transition uppercase" : "text-slate-600 text-xs font-bold px-4 py-2 rounded hover:text-slate-900 transition uppercase";
+            generarInterfazDias();
+        }
+
+        function calcularSalida9Horas(inputInicio) {
+            if (!inputInicio.value) return;
+            let [horas, minutos] = inputInicio.value.split(':').map(Number);
+            let horasFin = (horas + 9) % 24;
+            inputInicio.closest('.row-bloque').querySelector('.input-fin').value = `${horasFin.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+        }
+
+        function generarInterfazDias() {
+            const container = document.getElementById('dias-container');
+            container.innerHTML = "";
+            DIAS.forEach(dia => {
+                const sucursalDefault = (dia === "Miércoles") ? "WFH" : "PINULA";
+                const diaRow = document.createElement('div');
+                diaRow.className = "pt-4 first:pt-0 flex flex-col md:flex-row items-start md:items-center gap-4 justify-between";
+                diaRow.innerHTML = `
+                    <div class="w-full md:w-32"><span class="text-base font-bold text-slate-900">${dia}</span></div>
+                    <div id="blocks-${dia}" class="flex-1 w-full space-y-3">
+                        <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded border border-slate-200 row-bloque">
+                            <input type="time" value="08:00" onchange="calcularSalida9Horas(this)" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white font-medium shadow-inner input-inicio">
+                            <span class="text-xs font-bold text-slate-400">A</span>
+                            <input type="time" value="17:00" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white font-medium shadow-inner input-fin">
+                            <div class="flex flex-wrap gap-1">
+                                ${SUCURSALES.map(suc => `<button type="button" onclick="seleccionarSucursal(this, '${suc}')" class="branch-btn border border-slate-200 text-xs font-bold px-2.5 py-1.5 rounded transition bg-white text-slate-600 cursor-pointer ${suc === sucursalDefault ? 'active-' + obtenerClaseEstilo(suc) : ''}">${suc}</button>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-36 flex md:justify-end">
+                        <button type="button" onclick="agregarDobleSucursal('${dia}')" class="text-xs font-bold text-blue-600 hover:text-blue-800 border border-blue-200 bg-blue-50 px-3 py-2 rounded transition cursor-pointer">+ Doble Sucursal</button>
+                    </div>
+                `;
+                container.appendChild(diaRow);
+            });
+        }
+
+        function obtenerClaseEstilo(suc) {
+            return suc === "PINULA" ? "pinula" : suc === "GALERIAS PRIMMA" ? "primma" : suc === "METRONORTE" ? "metro" : suc === "ZONA 13" ? "z13" : suc === "METROCENTRO" ? "centro" : "wfh";
+        }
+
+        function seleccionarSucursal(btn, sucursal) {
+            btn.parentElement.querySelectorAll('.branch-btn').forEach(b => b.className = "branch-btn border border-slate-200 text-xs font-bold px-2.5 py-1.5 rounded transition bg-white text-slate-600 cursor-pointer");
+            btn.classList.add(`active-${obtenerClaseEstilo(sucursal)}`);
+        }
+
+        function agregarDobleSucursal(dia) {
+            const c = document.getElementById(`blocks-${dia}`);
+            if (c.querySelectorAll('.row-bloque').length >= 2) return;
+            const nb = document.createElement('div');
+            nb.className = "flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded border border-slate-200 row-bloque";
+            nb.innerHTML = `
+                <input type="time" value="13:00" onchange="calcularSalida9Horas(this)" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white font-medium shadow-inner input-inicio">
+                <span class="text-xs font-bold text-slate-400">A</span>
+                <input type="time" value="17:00" class="border border-slate-300 rounded px-2 py-1 text-sm bg-white font-medium shadow-inner input-fin">
+                <div class="flex flex-wrap gap-1">
+                    ${SUCURSALES.map(suc => `<button type="button" onclick="seleccionarSucursal(this, '${suc}')" class="branch-btn border border-slate-200 text-xs font-bold px-2.5 py-1.5 rounded transition bg-white text-slate-600 cursor-pointer ${suc === 'ZONA 13' ? 'active-z13' : ''}">${suc}</button>`).join('')}
+                </div>
+                <button type="button" onclick="this.parentElement.remove(); calcularBarras();" class="text-xs text-red-500 font-bold ml-auto cursor-pointer">Eliminar</button>
+            `;
+            c.appendChild(nb);
+        }
+
+        const CONFIG_AUDITORIAS = {
+            QA: { nombre: "Auditoría de QA", duracion: 2.5, clase: "block-qa" },
+            HW: { nombre: "Auditoría HW Audit", duracion: 1.5, clase: "block-hw" },
+            ENGLISH: { nombre: "Auditoría English LVL", duracion: 1.0, clase: "block-english" },
+            CSAT: { nombre: "Auditoría CSAT", duracion: 0.5, clase: "block-csat" },
+            PT: { nombre: "Auditoría PT", duracion: 0.5, clase: "block-pt" },
+            NEXT: { nombre: "Auditoría Next Lvl", duracion: 1.0, clase: "block-next" }
+        };
+
+        const CONFIG_INDIVIDUALES = {
+            HW_IND: { nombre: "Auditoría HW Audit", duracion: 1.0, clase: "block-hw" },
+            NEXT_IND: { nombre: "Auditoría Next Level", duracion: 0.45, clase: "block-next" },
+            QA_IND: { nombre: "Auditoría de QA", duracion: 1.75, clase: "block-qa" },
+            ENGLISH_IND: { nombre: "Auditoría English Lvl", duracion: 1.0, clase: "block-english" },
+            CSAT_IND: { nombre: "Auditoría CSAT", duracion: 0.25, clase: "block-csat" },
+            PT_IND: { nombre: "Auditoría PT", duracion: 0.25, clase: "block-pt" }
+        };
+
+        function generarBloques(tipo) {
+            const config = CONFIG_AUDITORIAS[tipo];
+            const coordinadores = parseInt(document.getElementById('input-coordinadores').value) || 4;
+            const banco = document.getElementById('banco-bloques');
+
+            for (let i = 0; i < coordinadores; i++) {
+                inyectarBloqueEnBanco(config.nombre, config.duracion, config.clase, banco);
+            }
+            calcularBarras();
+        }
+
+        function generarBlockIndividual(tipo) {
+            const config = CONFIG_INDIVIDUALES[tipo];
+            const banco = document.getElementById('banco-bloques');
+            inyectarBloqueEnBanco(config.nombre, config.duracion, config.clase, banco);
+            calcularBarras();
+        }
+
+        function inyectarBloqueEnBanco(nombre, duracion, clase, contenedor) {
+            idBloqueIncremental++;
+            bibliotecaBloques[idBloqueIncremental] = { nombre: nombre, duracion: duracion };
+
+            const card = document.createElement('div');
+            card.id = `card-${idBloqueIncremental}`;
+            card.draggable = true;
+            
+            // CORRECCIÓN CLAVE: Habilitar de forma explícita el evento ondragstart en las nuevas tarjetas individuales
+            card.ondragstart = (e) => {
+                e.dataTransfer.setData("text/plain", e.target.id);
+            };
+            
+            card.className = `${clase} p-2 text-xs font-bold rounded-sm shadow-sm cursor-grab flex justify-between items-center`;
+            card.innerHTML = `
+                <span>${nombre} (${duracion}h)</span>
+                <button onclick="eliminarBloque(${idBloqueIncremental})" class="text-[10px] bg-white/50 hover:bg-white text-slate-800 font-bold px-1.5 py-0.5 rounded-full ml-2 transition shadow-inner cursor-pointer">X</button>
+            `;
+            contenedor.appendChild(card);
+        }
+
+        function eliminarBloque(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.remove(); 
+                delete bibliotecaBloques[id];
+                calcularBarras();
+            }
+        }
+
+        function allowDrop(e) { e.preventDefault(); }
+        function drop(e, destino) {
+            e.preventDefault();
+            const idCard = e.dataTransfer.getData("text/plain");
+            const card = document.getElementById(idCard);
+            if (!card) return;
+
+            if (destino === 'banco') {
+                document.getElementById('banco-bloques').appendChild(card);
+            } else {
+                document.getElementById(`drop-${destino}`).appendChild(card);
+            }
+            calcularBarras();
+        }
+
+        function calcularBarras() {
+            let totalGeneradas = 0;
+            let totalAsignadas = 0;
+
+            Object.keys(bibliotecaBloques).forEach(id => {
+                const card = document.getElementById(`card-${id}`);
+                if (card) {
+                    totalGeneradas += bibliotecaBloques[id].duracion;
+                    if (card.parentElement.id !== 'banco-bloques') {
+                        totalAsignadas += bibliotecaBloques[id].duracion;
+                    }
+                }
+            });
+
+            totalGeneradas = Math.round(totalGeneradas * 100) / 100;
+            totalAsignadas = Math.round(totalAsignadas * 100) / 100;
+
+            const pctGen = Math.min((totalGeneradas / 20) * 100, 100);
+            const pctAsig = Math.min((totalAsignadas / 20) * 100, 100);
+
+            document.getElementById('bar-gen').style.width = `${pctGen}%`;
+            document.getElementById('txt-bar-gen').innerText = `${totalGeneradas} / 20 hrs`;
+            
+            document.getElementById('bar-asig').style.width = `${pctAsig}%`;
+            document.getElementById('txt-bar-asig').innerText = `${totalAsignadas} / 20 hrs`;
+        }
+
+        async function guardarEcosistemaCompleto() {
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.innerText = "Sincronizando Todo...";
+            saveBtn.disabled = true;
+
+            let registrosFinales = [];
+
+            DIAS.forEach(dia => {
+                const filas = document.getElementById(`blocks-${dia}`).querySelectorAll('.row-bloque');
+                filas.forEach(fila => {
+                    let suc = "WFH";
+                    fila.querySelectorAll('.branch-btn').forEach(b => { if(b.className.includes('active-')) suc = b.innerText.trim(); });
+                    registrosFinales.push({
+                        tipo: "HORARIO",
+                        dia: dia,
+                        inicio: fila.querySelector('.input-inicio').value,
+                        fin: fila.querySelector('.input-fin').value,
+                        detalle: suc
+                    });
+                });
+            });
+
+            DIAS.forEach(dia => {
+                const cards = document.getElementById(`drop-${dia}`).children;
+                for (let card of cards) {
+                    const id = card.id.replace('card-', '');
+                    const info = bibliotecaBloques[id];
+                    if (info) {
+                        registrosFinales.push({
+                            tipo: "PRIORIDAD",
+                            dia: dia,
+                            inicio: "-",
+                            fin: "-",
+                            detalle: `${info.nombre} (${info.duracion}h)`
+                        });
+                    }
+                }
+            });
+
+            try {
+                await fetch(URL_APPLICATIONS_SCRIPT, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fechaLunes: fechaLunesSeleccionada, registros: registrosFinales })
+                });
+                alert("¡Ecosistema Completo (Horarios y Prioridades) guardado con éxito!");
+            } catch(e) {
+                console.error(e);
+                alert("Error al guardar el ecosistema.");
+            } finally {
+                saveBtn.innerText = "Guardar Ecosistema Completo";
+                saveBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
