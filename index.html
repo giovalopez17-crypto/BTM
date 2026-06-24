@@ -164,12 +164,13 @@
             bloquesPorDefecto.forEach(b => agregarFila(b, b.includes("12:00") ? "Lunch" : ""));
         }
 
-        function procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar) {
+        function procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosHoyCalendar) {
             const container = document.getElementById('agenda-rows');
             container.innerHTML = '';
             bloquesActuales = [];
 
-            const reuniones = eventosCalendar.map(e => {
+            // Mapear únicamente las reuniones que ya pasaron el filtro de HOY
+            const reuniones = eventosHoyCalendar.map(e => {
                 const dInicio = new Date(e.start.dateTime);
                 const dFin = new Date(e.end.dateTime);
                 const strInicio = dInicio.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
@@ -228,6 +229,32 @@
             });
         }
 
+        function renderizarTablaDinamicaEstandar(eventosCalendario) {
+            const container = document.getElementById('agenda-rows');
+            container.innerHTML = '';
+            bloquesActuales = [];
+
+            const eventosFiltrados = eventosCalendario
+                .filter(e => e.start && (e.start.dateTime || e.start.date))
+                .map(e => ({
+                    titulo: e.summary || "Actividad",
+                    inicio: new Date(e.start.dateTime || e.start.date),
+                    fin: new Date(e.end.dateTime || e.end.date)
+                }))
+                .sort((a, b) => a.inicio - b.inicio);
+
+            if (eventosFiltrados.length === 0) { renderizarTablaPorDefecto(); return; }
+
+            let horaActual = new Date(eventosFiltrados[0].inicio);
+            eventosFiltrados.forEach(evt => {
+                if (evt.inicio > horaActual) {
+                    agregarFila(`${formatTimeFromDate(horaActual)} - ${formatTimeFromDate(evt.inicio)}`, "");
+                }
+                agregarFila(`${formatTimeFromDate(evt.inicio)} - ${formatTimeFromDate(evt.fin)}`, evt.titulo);
+                horaActual = new Date(evt.fin);
+            });
+        }
+
         async function sincronizarEcosistemaCompleto() {
             const btn = document.getElementById('auth-btn');
             btn.innerText = "Sincronizando...";
@@ -240,6 +267,14 @@
                 const resultado = await response.json();
                 
                 const eventosCalendar = resultado.calendar || [];
+                
+                // --- CORRECCIÓN EN EL FRONTEND: FILTRADO ESTRICTO DE LA FECHA DE HOY ---
+                const hoyLocalStr = new Date().toLocaleDateString('en-CA'); // Formato infalible: YYYY-MM-DD
+                const eventosHoy = eventosCalendar.filter(e => {
+                    const fechaEvt = new Date(e.start.dateTime).toLocaleDateString('en-CA');
+                    return fechaEvt === hoyLocalStr;
+                });
+
                 const lunesActualStr = obtenerLunesFechaString(); 
                 const diaHoyStr = cleanString(obtenerDiaSemanaEspanol());      
                 const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, "");
@@ -256,12 +291,16 @@
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
 
-                if (horariosBase.length > 0 && horariosBase[0].detalle) {
+                // Inyectar sucursal y pasar únicamente las reuniones filtradas de HOY
+                if (horariosBase.length > 0 && horariosBase[0].details !== "SIN RUTA") {
                     document.getElementById('dynamic-branch').innerText = ` - ${horariosBase[0].detalle.toUpperCase()}`;
-                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
+                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosHoy);
+                } else if (horariosBase.length > 0) {
+                    document.getElementById('dynamic-branch').innerText = ` - ${horariosBase[0].detalle.toUpperCase()}`;
+                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosHoy);
                 } else {
                     document.getElementById('dynamic-branch').innerText = " - SIN RUTA";
-                    renderizarTablaPorDefecto();
+                    renderizarTablaDinamicaEstandar(eventosHoy);
                 }
 
                 btn.innerText = "Sincronizado ✓";
