@@ -88,7 +88,6 @@
     <script>
         const CLIENT_ID = '388373913766-bsn43q9bq663k7ajbjacvvh4s2lcvmb4.apps.googleusercontent.com';
         
-        // Evadir la alerta automática de secretos de GitHub
         const P1 = 'AIzaSyB3_';
         const P2 = 'V2-f2x-1QZl3m8JR';
         const P3 = 'dKSkJ948kVGrFY';
@@ -133,6 +132,7 @@
             return `${h}:${m}`;
         }
 
+        // PARSEADOR MEJORADO: Soporta formatos HH:MM y HH:MM:SS descartando los segundos automáticamente
         function parseTimeToMinutes(timeStr) {
             if(!timeStr || !timeStr.includes(':')) return 0;
             const parts = timeStr.trim().split(':');
@@ -141,14 +141,9 @@
             return h * 60 + m;
         }
 
-        // LIMPIEZA ABSOLUTA DE DIAS: Remueve tildes, mayúsculas y espacios ruidosos
         function cleanString(str) {
             if(!str) return "";
-            return str.toString()
-                      .normalize("NFD")
-                      .replace(/[\u0300-\u036f]/g, "")
-                      .trim()
-                      .toLowerCase();
+            return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
         }
 
         function obtenerDiaSemanaEspanol() {
@@ -337,11 +332,10 @@
                 const resultado = await response.json();
                 
                 const lunesActualStr = obtenerLunesFechaString(); 
-                const diaHoyStr = cleanString(obtenerDiaSemanaEspanol()); // Normalizado estricto
+                const diaHoyStr = cleanString(obtenerDiaSemanaEspanol());      
 
                 const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, "");
 
-                // Filtrar comparando strings limpios de acentos y mayúsculas
                 const registrosHoy = resultado.data.filter(r => {
                     if (!r.fechaLunes) return false;
                     
@@ -379,7 +373,6 @@
             } catch (err) { console.error("Error al cargar HOY:", err); }
         }
 
-        // COPIAR AGENDA TRABAJADA
         function copiarAgendaTexto() {
             let textoAgenda = `📝 *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
             textoAgenda += `*TIME & ACTIVITIES:*\n`;
