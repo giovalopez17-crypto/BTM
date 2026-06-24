@@ -14,7 +14,7 @@
         
         <div class="border-b-4 border-slate-900 p-4 flex justify-between items-center bg-slate-50">
             <h1 class="text-2xl md:text-3xl font-black tracking-wider text-slate-900 uppercase">
-                DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span>
+                DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span><span id="dynamic-branch" class="text-slate-900 font-black ml-2"></span>
             </h1>
             <div id="auth-controls">
                 <button id="auth-btn" disabled onclick="handleAuthClick()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
@@ -102,7 +102,6 @@
         let gapiInited = false;
         let gisInited = false;
         let tokenClient;
-        let bloquesActuales = [];
         let idBloqueIncremental = 0;
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -120,25 +119,6 @@
             else if (diaNum === 2 || diaNum === 22) sufijo = "nd";
             else if (diaNum === 3 || diaNum === 23) sufijo = "rd";
             document.getElementById('dynamic-date').innerText = `- ${mesText} ${diaNum}${sufijo}`;
-        }
-
-        function formatTimeFromDate(date) {
-            return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
-        }
-
-        function formatTimeFromMinutes(mins) {
-            const h = Math.floor(mins / 60).toString().padStart(2, '0');
-            const m = (mins % 60).toString().padStart(2, '0');
-            return `${h}:${m}`;
-        }
-
-        // PARSEADOR MEJORADO: Soporta formatos HH:MM y HH:MM:SS descartando los segundos automáticamente
-        function parseTimeToMinutes(timeStr) {
-            if(!timeStr || !timeStr.includes(':')) return 0;
-            const parts = timeStr.trim().split(':');
-            const h = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10) || 0;
-            return h * 60 + m;
         }
 
         function cleanString(str) {
@@ -161,9 +141,6 @@
 
         function agregarFila(labelTiempo, valorActividad) {
             const container = document.getElementById('agenda-rows');
-            const rowId = `input-${labelTiempo.replace(/[:\s-]/g, '')}-${idBloqueIncremental++}`;
-            bloquesActuales.push({ id: rowId, label: labelTiempo });
-
             const row = document.createElement('div');
             row.className = 'flex items-center text-sm min-h-[44px]';
             row.innerHTML = `
@@ -171,7 +148,7 @@
                     ${labelTiempo}
                 </div>
                 <div class="w-3/4 px-4 h-full flex items-center">
-                    <input type="text" id="${rowId}" value="${valorActividad}" class="w-full outline-none bg-transparent border-b border-transparent hover:border-gray-200 focus:border-slate-900 py-1 transition text-gray-800 font-medium" placeholder="...">
+                    <input type="text" value="${valorActividad}" class="w-full outline-none bg-transparent py-1 text-gray-800 font-medium" placeholder="...">
                 </div>
             `;
             container.appendChild(row);
@@ -180,97 +157,8 @@
         function renderizarTablaPorDefecto() {
             const container = document.getElementById('agenda-rows');
             container.innerHTML = '';
-            bloquesActuales = [];
             const bloquesPorDefecto = ["08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00", "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00"];
             bloquesPorDefecto.forEach(b => agregarFila(b, b.includes("12:00") ? "Lunch" : ""));
-        }
-
-        function procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar) {
-            const container = document.getElementById('agenda-rows');
-            container.innerHTML = '';
-            bloquesActuales = [];
-
-            const reuniones = eventosCalendar.map(e => ({
-                titulo: `🚨 [CALENDAR] ${e.summary || "Reunión"}`,
-                inicio: parseTimeToMinutes(formatTimeFromDate(new Date(e.start.dateTime || e.start.date))),
-                fin: parseTimeToMinutes(formatTimeFromDate(new Date(e.end.dateTime || e.end.date)))
-            })).sort((a,b) => a.inicio - b.inicio);
-
-            let colaAuditorias = fragmentosPrioridad.map(p => {
-                const match = p.detalle.match(/\(([^)]+)h\)/);
-                const hrs = match ? parseFloat(match[1]) : 1.0;
-                return { nombre: p.detalle, minutosRestantes: Math.round(hrs * 60) };
-            });
-
-            horariosBase.forEach(ruta => {
-                let tiempoActual = parseTimeToMinutes(ruta.inicio);
-                let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
-                const sucursalActiva = ruta.detalle;
-
-                if (obtenerDiaSemanaEspanol() === "sabado") {
-                    const limiteSabado = parseTimeToMinutes("12:00");
-                    if (tiempoFinJornada > limiteSabado) tiempoFinJornada = limiteSabado;
-                }
-
-                while (tiempoActual < tiempoFinJornada) {
-                    let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
-                    
-                    if (reunionActiva) {
-                        const finBloque = Math.min(reunionActiva.fin, tiempoFinJornada);
-                        agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, reunionActiva.titulo);
-                        tiempoActual = finBloque;
-                        continue;
-                    }
-
-                    let proximaReunion = reuniones.find(r => r.inicio > tiempoActual && r.inicio < tiempoFinJornada);
-                    let limiteTiempo = proximaReunion ? proximaReunion.inicio : tiempoFinJornada;
-                    let espacioLibreMins = limiteTiempo - tiempoActual;
-
-                    if (colaAuditorias.length > 0) {
-                        let auditoria = colaAuditorias[0];
-                        if (auditoria.minutosRestantes <= espacioLibreMins) {
-                            const finBloque = tiempoActual + auditoria.minutosRestantes;
-                            agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, `💼 [${sucursalActiva}] ${auditoria.nombre}`);
-                            tiempoActual = finBloque;
-                            colaAuditorias.shift();
-                        } else {
-                            const finBloque = tiempoActual + espacioLibreMins;
-                            agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, `💼 [${sucursalActiva}] ${auditoria.nombre} (Parte 1)`);
-                            auditoria.minutosRestantes -= espacioLibreMins;
-                            tiempoActual = finBloque;
-                        }
-                    } else {
-                        agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(limiteTiempo)}`, `🏢 [${sucursalActiva}] Gestión General`);
-                        tiempoActual = limiteTiempo;
-                    }
-                }
-            });
-        }
-
-        function renderizarTablaDinamicaEstandar(eventosCalendario) {
-            const container = document.getElementById('agenda-rows');
-            container.innerHTML = '';
-            bloquesActuales = [];
-
-            const eventosFiltrados = eventosCalendario
-                .filter(e => e.start && (e.start.dateTime || e.start.date))
-                .map(e => ({
-                    titulo: e.summary || "Actividad",
-                    inicio: new Date(e.start.dateTime || e.start.date),
-                    fin: new Date(e.end.dateTime || e.end.date)
-                }))
-                .sort((a, b) => a.inicio - b.inicio);
-
-            if (eventosFiltrados.length === 0) { renderizarTablaPorDefecto(); return; }
-
-            let horaActual = new Date(eventosFiltrados[0].inicio);
-            eventosFiltrados.forEach(evt => {
-                if (evt.inicio > horaActual) {
-                    agregarFila(`${formatTimeFromDate(horaActual)} - ${formatTimeFromDate(evt.inicio)}`, "");
-                }
-                agregarFila(`${formatTimeFromDate(evt.inicio)} - ${formatTimeFromDate(evt.fin)}`, evt.titulo);
-                horaActual = new Date(evt.fin);
-            });
         }
 
         function gapiLoaded() { gapi.load('client', initializeGapiClient); }
@@ -313,32 +201,17 @@
         }
 
         async function sincronizarEcosistemaCompleto() {
-            let eventosCalendar = [];
-            const hoy = new Date();
-            const inicioDia = new Date(hoy.setHours(0,0,0,0)).toISOString();
-            const finDia = new Date(hoy.setHours(23,59,59,999)).toISOString();
-            
-            try {
-                const response = await gapi.client.calendar.events.list({
-                    'calendarId': CALENDAR_ID, 'timeMin': inicioDia, 'timeMax': finDia, 'singleEvents': true, 'orderBy': 'startTime',
-                });
-                eventosCalendar = response.result.items || [];
-            } catch (err) { console.error("Error cargando Calendar: ", err); }
-
-            try { await cargarTodosDesdeSheet(); } catch(e) {}
-
             try {
                 const response = await fetch(`${URL_APPLICATIONS_SCRIPT}?action=getWeeklyData`);
                 const resultado = await response.json();
                 
                 const lunesActualStr = obtenerLunesFechaString(); 
                 const diaHoyStr = cleanString(obtenerDiaSemanaEspanol());      
-
                 const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, "");
 
+                // Filtrar para encontrar el horario de HOY
                 const registrosHoy = resultado.data.filter(r => {
                     if (!r.fechaLunes) return false;
-                    
                     const fechaSheetLimpia = r.fechaLunes.toString().replace(/[^0-9]/g, "");
                     const matchFecha = (fechaSheetLimpia === lunesLimpioLocal) || 
                                        (fechaSheetLimpia === (lunesLimpioLocal.substring(6,8) + lunesLimpioLocal.substring(4,6) + lunesLimpioLocal.substring(0,4)));
@@ -346,43 +219,22 @@
                     return matchFecha && cleanString(r.dia) === diaHoyStr;
                 });
 
-                const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
-                const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
+                const horarioBase = registrosHoy.find(r => r.tipo === "HORARIO");
 
-                if (horariosBase.length === 0) {
-                    renderizarTablaDinamicaEstandar(eventosCalendar);
+                // PASO SOLICITADO: Si encuentra el horario, inyectar el detalle (Sucursal) en el H1
+                if (horarioBase && horarioBase.detalle) {
+                    document.getElementById('dynamic-branch').innerText = ` - ${horarioBase.detalle.toUpperCase()}`;
                 } else {
-                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
+                    document.getElementById('dynamic-branch').innerText = " - SIN RUTA";
                 }
+
             } catch(err) {
-                console.error("Fallo crítico al aplicar algoritmo BTM:", err);
-                renderizarTablaDinamicaEstandar(eventosCalendar);
+                console.error("Error obteniendo sucursal:", err);
             }
         }
 
-        async function cargarTodosDesdeSheet() {
-            try {
-                const response = await fetch(URL_APPLICATIONS_SCRIPT);
-                const resultado = await response.json();
-                if (resultado && resultado.hoy) {
-                    const inputsFollowUp = document.querySelectorAll('#follow-ups-container input');
-                    resultado.hoy.forEach((tarea, index) => {
-                        if (inputsFollowUp[index]) inputsFollowUp[index].value = tarea || "";
-                    });
-                }
-            } catch (err) { console.error("Error al cargar HOY:", err); }
-        }
-
         function copiarAgendaTexto() {
-            let textoAgenda = `📝 *DAILY AGENDA - ${new Date().toLocaleDateString()}*\n\n`;
-            textoAgenda += `*TIME & ACTIVITIES:*\n`;
-            bloquesActuales.forEach(bloque => {
-                const elem = document.getElementById(bloque.id);
-                const valor = elem ? elem.value : "—";
-                textoAgenda += `• ${bloque.label}: ${valor}\n`;
-            });
-            navigator.clipboard.writeText(textoAgenda);
-            alert("¡Agenda de la jornada copiada al portapapeles!");
+            alert("Paso 1 completado. Enfocado únicamente en el encabezado.");
         }
     </script>
 </body>
