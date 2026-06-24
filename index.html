@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Agenda Semanal Dinámica</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </head>
 <body class="bg-gray-100 font-sans p-4 md:p-8 text-slate-800">
 
@@ -17,8 +15,8 @@
                 DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span><span id="dynamic-branch" class="text-slate-900 font-black ml-2"></span>
             </h1>
             <div id="auth-controls">
-                <button id="auth-btn" disabled onclick="handleAuthClick()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
-                    Cargando Google API...
+                <button id="auth-btn" onclick="sincronizarEcosistemaCompleto()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
+                    Sincronizar Ecosistema BTM
                 </button>
             </div>
         </div>
@@ -86,22 +84,8 @@
     </div>
 
     <script>
-        const CLIENT_ID = '388373913766-bsn43q9bq663k7ajbjacvvh4s2lcvmb4.apps.googleusercontent.com';
-        
-        const P1 = 'AIzaSyB3_';
-        const P2 = 'V2-f2x-1QZl3m8JR';
-        const P3 = 'dKSkJ948kVGrFY';
-        const API_KEY = P1 + P2 + P3;
-
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/calendar.events.readonly';
-        const CALENDAR_ID = 'giovalopez17@gmail.com'; 
-
         const URL_APPLICATIONS_SCRIPT = 'https://script.google.com/macros/s/AKfycbyn94Mdmmaan-fXQk1IVjEu6y8dkdQ23JzRj2QjfaKbymOGZINJvTtgg2B05ThNvGLr/exec'; 
 
-        let gapiInited = false;
-        let gisInited = false;
-        let tokenClient;
         let bloquesActuales = [];
         let idBloqueIncremental = 0;
 
@@ -122,17 +106,12 @@
             document.getElementById('dynamic-date').innerText = `- ${mesText} ${diaNum}${sufijo}`;
         }
 
-        function formatTimeFromDate(date) {
-            return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
-        }
-
         function formatTimeFromMinutes(mins) {
             const h = Math.floor(mins / 60).toString().padStart(2, '0');
             const m = (mins % 60).toString().padStart(2, '0');
             return `${h}:${m}`;
         }
 
-        // CORREGIDO: Limpia los segundos extras ruidosos de las horas de tu Excel automáticamente
         function parseTimeToMinutes(timeStr) {
             if(!timeStr || !timeStr.includes(':')) return 0;
             const parts = timeStr.trim().split(':');
@@ -190,11 +169,18 @@
             container.innerHTML = '';
             bloquesActuales = [];
 
-            const reuniones = eventosCalendar.map(e => ({
-                titulo: `🚨 [CALENDAR] ${e.summary || "Reunión"}`,
-                inicio: parseTimeToMinutes(formatTimeFromDate(new Date(e.start.dateTime || e.start.date))),
-                fin: parseTimeToMinutes(formatTimeFromDate(new Date(e.end.dateTime || e.end.date)))
-            })).sort((a,b) => a.inicio - b.inicio);
+            const reuniones = eventosCalendar.map(e => {
+                const dInicio = new Date(e.start.dateTime);
+                const dFin = new Date(e.end.dateTime);
+                const strInicio = dInicio.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+                const strFin = dFin.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+                
+                return {
+                    titulo: `🚨 [CALENDAR] ${e.summary || "Reunión"}`,
+                    inicio: parseTimeToMinutes(strInicio),
+                    fin: parseTimeToMinutes(strFin)
+                };
+            }).sort((a,b) => a.inicio - b.inicio);
 
             let colaAuditorias = fragmentosPrioridad.map(p => {
                 const match = p.detalle.match(/\(([^)]+)h\)/);
@@ -242,90 +228,18 @@
             });
         }
 
-        function renderizarTablaDinamicaEstandar(eventosCalendario) {
-            const container = document.getElementById('agenda-rows');
-            container.innerHTML = '';
-            bloquesActuales = [];
-
-            const eventosFiltrados = eventosCalendario
-                .filter(e => e.start && (e.start.dateTime || e.start.date))
-                .map(e => ({
-                    titulo: e.summary || "Actividad",
-                    inicio: new Date(e.start.dateTime || e.start.date),
-                    fin: new Date(e.end.dateTime || e.end.date)
-                }))
-                .sort((a, b) => a.inicio - b.inicio);
-
-            if (eventosFiltrados.length === 0) { renderizarTablaPorDefecto(); return; }
-
-            let horaActual = new Date(eventosFiltrados[0].inicio);
-            eventosFiltrados.forEach(evt => {
-                if (evt.inicio > horaActual) {
-                    agregarFila(`${formatTimeFromDate(horaActual)} - ${formatTimeFromDate(evt.inicio)}`, "");
-                }
-                agregarFila(`${formatTimeFromDate(evt.inicio)} - ${formatTimeFromDate(evt.fin)}`, evt.titulo);
-                horaActual = new Date(evt.fin);
-            });
-        }
-
-        function gapiLoaded() { gapi.load('client', initializeGapiClient); }
-        async function initializeGapiClient() {
-            try {
-                await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
-                gapiInited = true;
-                maybeEnableButtons();
-            } catch(e) { console.error(e); }
-        }
-        
-        function gisLoaded() {
-            try {
-                tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: '' });
-                gisInited = true;
-                maybeEnableButtons();
-            } catch(e) { console.error(e); }
-        }
-        
-        function maybeEnableButtons() { 
-            if (gapiInited && gisInited) { 
-                const btn = document.getElementById('auth-btn');
-                if(btn) {
-                    btn.innerText = "Sincronizar Ecosistema BTM";
-                    btn.removeAttribute('disabled');
-                }
-            } 
-        }
-
-        async function handleAuthClick() {
-            if (!tokenClient) return;
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) { throw (resp); }
-                document.getElementById('auth-btn').innerText = "Sincronizado ✓";
-                document.getElementById('auth-btn').className = "bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm";
-                await sincronizarEcosistemaCompleto();
-            };
-            if (gapi.client.getToken() === null) { tokenClient.requestAccessToken({prompt: 'consent'}); } 
-            else { tokenClient.requestAccessToken({prompt: ''}); }
-        }
-
         async function sincronizarEcosistemaCompleto() {
-            let eventosCalendar = [];
-            const hoy = new Date();
-            const inicioDia = new Date(hoy.setHours(0,0,0,0)).toISOString();
-            const finDia = new Date(hoy.setHours(23,59,59,999)).toISOString();
-            
-            try {
-                const response = await gapi.client.calendar.events.list({
-                    'calendarId': CALENDAR_ID, 'timeMin': inicioDia, 'timeMax': finDia, 'singleEvents': true, 'orderBy': 'startTime',
-                });
-                eventosCalendar = response.result.items || [];
-            } catch (err) { console.error("Error cargando Calendar: ", err); }
-
-            try { await cargarTodosDesdeSheet(); } catch(e) {}
+            const btn = document.getElementById('auth-btn');
+            btn.innerText = "Sincronizando...";
+            btn.disabled = true;
 
             try {
+                await cargarTodosDesdeSheet();
+
                 const response = await fetch(`${URL_APPLICATIONS_SCRIPT}?action=getWeeklyData`);
                 const resultado = await response.json();
                 
+                const eventosCalendar = resultado.calendar || [];
                 const lunesActualStr = obtenerLunesFechaString(); 
                 const diaHoyStr = cleanString(obtenerDiaSemanaEspanol());      
                 const lunesLimpioLocal = lunesActualStr.replace(/[^0-9]/g, "");
@@ -342,18 +256,23 @@
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
 
-                // Inyectar el detalle (Sucursal) en el encabezado dinámico
                 if (horariosBase.length > 0 && horariosBase[0].detalle) {
                     document.getElementById('dynamic-branch').innerText = ` - ${horariosBase[0].detalle.toUpperCase()}`;
                     procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosCalendar);
                 } else {
                     document.getElementById('dynamic-branch').innerText = " - SIN RUTA";
-                    renderizarTablaDinamicaEstandar(eventosCalendar);
+                    renderizarTablaPorDefecto();
                 }
+
+                btn.innerText = "Sincronizado ✓";
+                btn.className = "bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm";
+                btn.disabled = false;
 
             } catch(err) {
                 console.error("Fallo crítico al aplicar algoritmo BTM:", err);
-                renderizarTablaDinamicaEstandar(eventosCalendar);
+                btn.innerText = "Error ✕";
+                btn.className = "bg-red-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm";
+                btn.disabled = false;
             }
         }
 
