@@ -5,81 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Agenda Semanal Dinámica</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans p-4 md:p-8 text-slate-800">
 
-    <div class="max-w-4xl mx-auto bg-white border border-gray-300 shadow-sm rounded-sm overflow-hidden">
+    <div id="agenda-card" class="max-w-4xl mx-auto bg-white border border-gray-300 shadow-sm rounded-sm overflow-hidden p-1">
         
-        <div class="border-b-4 border-slate-900 p-4 flex justify-between items-center bg-slate-50">
-            <h1 class="text-2xl md:text-3xl font-black tracking-wider text-slate-900 uppercase">
-                DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span><span id="dynamic-branch" class="text-slate-900 font-black ml-2"></span>
-            </h1>
-            <div id="auth-controls">
-                <button id="auth-btn" onclick="sincronizarEcosistemaCompleto()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
-                    Sincronizar Ecosistema BTM
-                </button>
+        <div class="bg-white border border-gray-200">
+            <div class="border-b-4 border-slate-900 p-4 flex justify-between items-center bg-slate-50">
+                <h1 class="text-2xl md:text-3xl font-black tracking-wider text-slate-900 uppercase">
+                    DAILY AGENDA <span id="dynamic-date" class="text-gray-500 font-medium ml-2"></span><span id="dynamic-branch" class="text-slate-900 font-black ml-2"></span>
+                </h1>
+                <div id="auth-controls" data-html2canvas-ignore="true">
+                    <button id="auth-btn" onclick="sincronizarEcosistemaCompleto()" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded hover:bg-slate-800 transition cursor-pointer">
+                        Sincronizar Ecosistema BTM
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 border-b-2 border-slate-900">
-            <div class="p-4 border-r-0 md:border-r-2 border-slate-900">
-                <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">IMPACT AREAS</h2>
-                <div class="space-y-2">
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A1</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A2</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A3</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A4</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A5</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
-                    <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A6</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 border-b-2 border-slate-900">
+                <div class="p-4 border-r-0 md:border-r-2 border-slate-900">
+                    <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">IMPACT AREAS</h2>
+                    <div class="space-y-2">
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A1</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A2</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A3</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A4</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A5</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                        <div class="flex items-center border-b border-gray-300 pb-1"><span class="text-xs font-bold text-gray-400 w-6">A6</span><input type="text" class="w-full text-sm outline-none bg-transparent font-medium" placeholder="..."></div>
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50/40">
+                    <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">IMPORTANT FOLLOW UPS</h2>
+                    <div id="follow-ups-container" class="space-y-3 pt-1">
+                        <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
+                        <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
+                        <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
+                        <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
+                        <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
+                    </div>
                 </div>
             </div>
-            <div class="p-4 bg-slate-50/40">
-                <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">IMPORTANT FOLLOW UPS</h2>
-                <div id="follow-ups-container" class="space-y-3 pt-1">
-                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                    <input type="text" class="w-full text-sm border-b border-gray-300 pb-1 outline-none bg-transparent font-medium" placeholder="—">
-                </div>
-            </div>
-        </div>
 
-        <div class="w-full">
-            <div class="flex bg-slate-900 text-white text-xs font-bold tracking-wider uppercase text-center border-b border-slate-900">
-                <div class="w-1/4 py-2 border-r border-slate-700">Time</div>
-                <div class="w-3/4 py-2">Activity</div>
+            <div class="w-full">
+                <div class="flex bg-slate-900 text-white text-xs font-bold tracking-wider uppercase text-center border-b border-slate-900">
+                    <div class="w-1/4 py-2 border-r border-slate-700">Time</div>
+                    <div class="w-3/4 py-2">Activity</div>
+                </div>
+                <div id="agenda-rows" class="divide-y divide-gray-200"></div>
             </div>
-            <div id="agenda-rows" class="divide-y divide-gray-200"></div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 border-t-2 border-slate-900 bg-slate-50/20">
-            <div class="p-4 border-r-0 md:border-r-2 border-slate-900 flex flex-col justify-between">
-                <div class="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1 flex-wrap">
-                    <span>Yo,</span>
-                    <input type="text" class="border-b border-gray-400 outline-none w-28 text-sm font-semibold bg-transparent text-gray-800" placeholder="Tu nombre">
-                    <span>estoy agradecido por:</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 border-t-2 border-slate-900 bg-slate-50/20">
+                <div class="p-4 border-r-0 md:border-r-2 border-slate-900 flex flex-col justify-between">
+                    <div class="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1 flex-wrap">
+                        <span>Yo,</span>
+                        <input type="text" class="border-b border-gray-400 outline-none w-28 text-sm font-semibold bg-transparent text-gray-800" placeholder="Tu nombre">
+                        <span>estoy agradecido por:</span>
+                    </div>
+                    <div class="space-y-2">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="1.">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="2.">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="3.">
+                    </div>
                 </div>
-                <div class="space-y-2">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="1.">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="2.">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="3.">
-                </div>
-            </div>
-            <div class="p-4 flex flex-col justify-between">
-                <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">REMINDERS FOR TOMORROW</h2>
-                <div id="reminders-container" class="space-y-2">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
-                    <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
+                <div class="p-4 flex flex-col justify-between">
+                    <h2 class="text-xs font-black tracking-widest bg-slate-900 text-white p-1 text-center mb-3">REMINDERS FOR TOMORROW</h2>
+                    <div id="reminders-container" class="space-y-2">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
+                        <input type="text" class="w-full text-sm border-b border-gray-200 py-1 outline-none bg-transparent font-medium" placeholder="•">
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="max-w-4xl mx-auto mt-4 flex justify-end">
-        <button onclick="copiarAgendaTexto()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded shadow transition cursor-pointer">
-            Copiar Agenda en Texto para Enviar
+    <div class="max-w-4xl mx-auto mt-4 flex justify-end gap-3">
+        <button onclick="copiarAgendaTexto()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold text-sm px-4 py-2.5 rounded shadow transition cursor-pointer">
+            Copiar Texto
+        </button>
+        <button onclick="copiarAgendaComoImagen()" id="btn-capture" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded shadow transition cursor-pointer">
+            📷 Copiar Agenda como Imagen
         </button>
     </div>
 
@@ -169,7 +175,6 @@
             container.innerHTML = '';
             bloquesActuales = [];
 
-            // Mapear únicamente las reuniones que ya pasaron el filtro de HOY
             const reuniones = eventosHoyCalendar.map(e => {
                 const dInicio = new Date(e.start.dateTime);
                 const dFin = new Date(e.end.dateTime);
@@ -194,9 +199,19 @@
                 let tiempoFinJornada = parseTimeToMinutes(ruta.fin);
                 const sucursalActiva = ruta.detalle;
 
+                // --- INYECCIÓN DE LUNCH AUTOMÁTICO RE-CONFIGURABLE ---
+                const inicioLunch = parseTimeToMinutes("12:00");
+                const finLunch = parseTimeToMinutes("13:00");
+
                 while (tiempoActual < tiempoFinJornada) {
+                    // 1. Validar si toca el Almuerzo de forma prioritaria
+                    if (tiempoActual >= inicioLunch && tiempoActual < finLunch) {
+                        agregarFila(`${formatTimeFromMinutes(inicioLunch)} - ${formatTimeFromMinutes(finLunch)}`, "🍔 Lunch / Almuerzo");
+                        tiempoActual = finLunch;
+                        continue;
+                    }
+
                     let reunionActiva = reuniones.find(r => tiempoActual >= r.inicio && tiempoActual < r.fin);
-                    
                     if (reunionActiva) {
                         const finBloque = Math.min(reunionActiva.fin, tiempoFinJornada);
                         agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(finBloque)}`, reunionActiva.titulo);
@@ -204,11 +219,17 @@
                         continue;
                     }
 
+                    // Determinar el límite del próximo bloque (Reunión o Almuerzo)
                     let proximaReunion = reuniones.find(r => r.inicio > tiempoActual && r.inicio < tiempoFinJornada);
                     let limiteTiempo = proximaReunion ? proximaReunion.inicio : tiempoFinJornada;
+                    
+                    if (tiempoActual < inicioLunch && limiteTiempo > inicioLunch) {
+                        limiteTiempo = inicioLunch;
+                    }
+
                     let espacioLibreMins = limiteTiempo - tiempoActual;
 
-                    if (colaAuditorias.length > 0) {
+                    if (colaAuditorias.length > 0 && espacioLibreMins > 0) {
                         let auditoria = colaAuditorias[0];
                         if (auditoria.minutosRestantes <= espacioLibreMins) {
                             const finBloque = tiempoActual + auditoria.minutosRestantes;
@@ -221,8 +242,10 @@
                             auditoria.minutosRestantes -= espacioLibreMins;
                             tiempoActual = finBloque;
                         }
-                    } else {
+                    } else if (espacioLibreMins > 0) {
                         agregarFila(`${formatTimeFromMinutes(tiempoActual)} - ${formatTimeFromMinutes(limiteTiempo)}`, `🏢 [${sucursalActiva}] Gestión General`);
+                        tiempoActual = limiteTiempo;
+                    } else {
                         tiempoActual = limiteTiempo;
                     }
                 }
@@ -267,9 +290,7 @@
                 const resultado = await response.json();
                 
                 const eventosCalendar = resultado.calendar || [];
-                
-                // --- CORRECCIÓN EN EL FRONTEND: FILTRADO ESTRICTO DE LA FECHA DE HOY ---
-                const hoyLocalStr = new Date().toLocaleDateString('en-CA'); // Formato infalible: YYYY-MM-DD
+                const hoyLocalStr = new Date().toLocaleDateString('en-CA'); 
                 const eventosHoy = eventosCalendar.filter(e => {
                     const fechaEvt = new Date(e.start.dateTime).toLocaleDateString('en-CA');
                     return fechaEvt === hoyLocalStr;
@@ -291,11 +312,7 @@
                 const horariosBase = registrosHoy.filter(r => r.tipo === "HORARIO");
                 const fragmentosPrioridad = registrosHoy.filter(r => r.tipo === "PRIORIDAD");
 
-                // Inyectar sucursal y pasar únicamente las reuniones filtradas de HOY
-                if (horariosBase.length > 0 && horariosBase[0].details !== "SIN RUTA") {
-                    document.getElementById('dynamic-branch').innerText = ` - ${horariosBase[0].detalle.toUpperCase()}`;
-                    procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosHoy);
-                } else if (horariosBase.length > 0) {
+                if (horariosBase.length > 0) {
                     document.getElementById('dynamic-branch').innerText = ` - ${horariosBase[0].detalle.toUpperCase()}`;
                     procesarAlgoritmoEcosistema(horariosBase, fragmentosPrioridad, eventosHoy);
                 } else {
@@ -308,7 +325,7 @@
                 btn.disabled = false;
 
             } catch(err) {
-                console.error("Fallo crítico al aplicar algoritmo BTM:", err);
+                console.error(err);
                 btn.innerText = "Error ✕";
                 btn.className = "bg-red-600 text-white text-xs font-bold px-4 py-2 rounded shadow-sm";
                 btn.disabled = false;
@@ -325,7 +342,7 @@
                         if (inputsFollowUp[index]) inputsFollowUp[index].value = tarea || "";
                     });
                 }
-            } catch (err) { console.error("Error al cargar HOY:", err); }
+            } catch (err) { console.error(err); }
         }
 
         function copiarAgendaTexto() {
@@ -337,7 +354,43 @@
                 textoAgenda += `• ${bloque.label}: ${valor}\n`;
             });
             navigator.clipboard.writeText(textoAgenda);
-            alert("¡Agenda de la jornada copiada al portapapeles!");
+            alert("¡Texto copiado al portapapeles!");
+        }
+
+        // --- FUNCIÓN GANADORA: CAPTURA DE PANTALLA DIRECTO AL PORTAPAPELES ---
+        async function copiarAgendaComoImagen() {
+            const btn = document.getElementById('btn-capture');
+            btn.innerText = "Procesando Imagen...";
+            btn.disabled = true;
+
+            const targetElement = document.getElementById('agenda-card');
+
+            // html2canvas toma el contenedor, ignora los botones y genera la foto
+            html2canvas(targetElement, { scale: 2, useCORS: true }).then(canvas => {
+                canvas.toBlob(async (blob) => {
+                    try {
+                        // Guardar la foto directamente en el portapapeles del sistema
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ [blob.type]: blob })
+                        ]);
+                        btn.innerText = "¡Copiada! Pasá a WhatsApp y dale pegar (Ctrl+V)";
+                        btn.className = "bg-blue-600 text-white font-bold text-sm px-6 py-2.5 rounded shadow transition cursor-pointer";
+                        setTimeout(() => {
+                            btn.innerText = "📷 Copiar Agenda como Imagen";
+                            btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded shadow transition cursor-pointer";
+                        }, 4000);
+                    } catch (err) {
+                        console.error("Fallo al copiar al portapapeles:", err);
+                        alert("Tu navegador bloqueó el guardado directo. Se descargará el archivo en su lugar.");
+                        const link = document.createElement('a');
+                        link.download = `Daily_Agenda_${new Date().toISOString().split('T')[0]}.png`;
+                        link.href = canvas.toDataURL();
+                        link.click();
+                    } finally {
+                        btn.disabled = false;
+                    }
+                }, 'image/png');
+            });
         }
     </script>
 </body>
